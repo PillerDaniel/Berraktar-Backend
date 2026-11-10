@@ -17,6 +17,12 @@ import { CreateUserCommandHandler } from '../commands/user/CreateUserCommandHand
 import { LoginUserCommandHandler } from '../commands/user/LoginUserCommandHandler.js';
 import { LogOutCommandHandler } from '../commands/user/LogOutCommandHandler.js';
 
+import { EditCountryCommandHandler } from '../commands/profile/EditCountryCommandHandler.js';
+import { EditCityCommandHandler } from '../commands/profile/EditCityCommandhandler.js';
+import { EditPostalCodeCommandHandler } from '../commands/profile/EditPostalCodeCommandHandler.js';
+import { EditAddressCommandHandler } from '../commands/profile/EditAddressCommandHandler.js';
+import { EditBankAccountNumberCommandHandler } from '../commands/profile/EditBankAccountNumberCommandHandler.js';
+
 //query handlers
 import { GetUserProfileQueryHandler } from '../queries/profile/GetUserProfileQueryHandler.js';
 
@@ -39,6 +45,14 @@ export class DiContainer {
     private _createUserCommandHandler: CreateUserCommandHandler | null = null;
     private _loginUserCommandHandler: LoginUserCommandHandler | null = null;
     private _logOutCommandHandler: LogOutCommandHandler | null = null;
+
+    private _editCountryCommandHandler: EditCountryCommandHandler | null = null;
+    private _editCityCommandHandler: EditCityCommandHandler | null = null;
+    private _editPostalCodeCommandHandler: EditPostalCodeCommandHandler | null =
+        null;
+    private _editAddressCommandHandler: EditAddressCommandHandler | null = null;
+    private _editBankAccountNumberCommandHandler: EditBankAccountNumberCommandHandler | null =
+        null;
 
     //query handlers
     private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
@@ -111,6 +125,49 @@ export class DiContainer {
             );
         }
         return this._logOutCommandHandler;
+    }
+
+    public get EditCountryHandler(): EditCountryCommandHandler {
+        if (!this._editCountryCommandHandler) {
+            this._editCountryCommandHandler = new EditCountryCommandHandler(
+                this.profileRepository
+            );
+        }
+        return this._editCountryCommandHandler;
+    }
+
+    public get EditCityHandler(): EditCityCommandHandler {
+        if (!this._editCityCommandHandler) {
+            this._editCityCommandHandler = new EditCityCommandHandler(
+                this.profileRepository
+            );
+        }
+        return this._editCityCommandHandler;
+    }
+
+    public get EditPostalCodeHandler(): EditPostalCodeCommandHandler {
+        if (!this._editPostalCodeCommandHandler) {
+            this._editPostalCodeCommandHandler =
+                new EditPostalCodeCommandHandler(this.profileRepository);
+        }
+        return this._editPostalCodeCommandHandler;
+    }
+
+    public get EditAddressHandler(): EditAddressCommandHandler {
+        if (!this._editAddressCommandHandler) {
+            this._editAddressCommandHandler = new EditAddressCommandHandler(
+                this.profileRepository
+            );
+        }
+        return this._editAddressCommandHandler;
+    }
+
+    public get EditBankAccountNumberHandler(): EditBankAccountNumberCommandHandler {
+        if (!this._editBankAccountNumberCommandHandler) {
+            this._editBankAccountNumberCommandHandler =
+                new EditBankAccountNumberCommandHandler(this.profileRepository);
+        }
+        return this._editBankAccountNumberCommandHandler;
     }
 
     //query handlers

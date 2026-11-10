@@ -28,7 +28,7 @@ export default class Profile {
     @Column({ type: 'int', nullable: true })
     postalCode?: number;
 
-    @Column({ type: 'varchar', length: 30, nullable: true })
+    @Column({ type: 'varchar', length: 34, nullable: true })
     bankAccountNumber?: string;
 
     @OneToOne(() => User, (user) => user.profile)
