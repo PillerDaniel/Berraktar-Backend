@@ -8,11 +8,13 @@ import Profile from '../../../domain/models/Profile.js';
 
 import { AppError } from '../../../domain/errors/AppError.js';
 import { UserRole } from '../../../domain/enums/UserRole.js';
+import type { IProfileRepository } from '../../../domain/iRepositories/IProfileRepository.js';
 
 export class CreateUserCommandHandler {
     constructor(
         private readonly userRepository: IUserRepository,
-        private readonly walletRepository: IWalletRepository
+        private readonly walletRepository: IWalletRepository,
+        private readonly profileRepository: IProfileRepository
     ) {}
 
     async handle(command: CreateUserCommand): Promise<User> {
@@ -55,6 +57,7 @@ export class CreateUserCommandHandler {
         profile.user = user;
 
         await this.walletRepository.createWallet(wallet);
+        await this.profileRepository.createProfile(profile);
 
         return user;
     }

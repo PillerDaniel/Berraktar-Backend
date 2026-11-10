@@ -1,6 +1,7 @@
 //interfaces
 import type { IUserRepository } from '../../domain/iRepositories/IUserRepository.js';
 import type { IWalletRepository } from '../../domain/iRepositories/IWalletRepository.js';
+import type { IProfileRepository } from '../../domain/iRepositories/IProfileRepository.js';
 
 //session store
 import type { ISessionStore } from '../../domain/iRepositories/ISessionStore.js';
@@ -9,6 +10,7 @@ import { RedisSessionStore } from '../../infrastructure/repositories/RedisSessio
 //repositories
 import UserRepository from '../../infrastructure/repositories/UserRepository.js';
 import WalletRepository from '../../infrastructure/repositories/WalletRepository.js';
+import ProfileRepository from '../../infrastructure/repositories/ProfileRepository.js';
 
 //command handlers
 import { CreateUserCommandHandler } from '../commands/user/CreateUserCommandHandler.js';
@@ -16,6 +18,7 @@ import { LoginUserCommandHandler } from '../commands/user/LoginUserCommandHandle
 import { LogOutCommandHandler } from '../commands/user/LogOutCommandHandler.js';
 
 //query handlers
+import { GetUserProfileQueryHandler } from '../queries/profile/GetUserProfileQueryHandler.js';
 
 //IServices
 
@@ -27,6 +30,7 @@ export class DiContainer {
     //repos
     private _userRepository: IUserRepository | null = null;
     private _walletRepository: IWalletRepository | null = null;
+    private _profileRepository: IProfileRepository | null = null;
 
     //session store
     private _sessionStore: ISessionStore | null = null;
@@ -37,6 +41,8 @@ export class DiContainer {
     private _logOutCommandHandler: LogOutCommandHandler | null = null;
 
     //query handlers
+    private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
+        null;
 
     private constructor() {}
 
@@ -62,6 +68,13 @@ export class DiContainer {
         return this._walletRepository;
     }
 
+    public get profileRepository(): IProfileRepository {
+        if (!this._profileRepository) {
+            this._profileRepository = new ProfileRepository();
+        }
+        return this._profileRepository;
+    }
+
     public get sessionStore(): ISessionStore {
         if (!this._sessionStore) {
             this._sessionStore = new RedisSessionStore();
@@ -74,7 +87,8 @@ export class DiContainer {
         if (!this._createUserCommandHandler) {
             this._createUserCommandHandler = new CreateUserCommandHandler(
                 this.userRepository,
-                this.walletRepository
+                this.walletRepository,
+                this.profileRepository
             );
         }
         return this._createUserCommandHandler;
@@ -100,6 +114,14 @@ export class DiContainer {
     }
 
     //query handlers
+    public get GetUserProfileQueryHandler(): GetUserProfileQueryHandler {
+        if (!this._getUserProfileQueryHandler) {
+            this._getUserProfileQueryHandler = new GetUserProfileQueryHandler(
+                this.profileRepository
+            );
+        }
+        return this._getUserProfileQueryHandler;
+    }
 }
 
 export const container = DiContainer.getInstance();
