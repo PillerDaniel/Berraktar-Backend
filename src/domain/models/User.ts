@@ -10,6 +10,7 @@ import type { Relation } from 'typeorm';
 
 import { UserRole } from '../enums/UserRole.js';
 import Wallet from './Wallet.js';
+import Profile from './Profile.js';
 
 @Entity('users')
 export default class User {
@@ -49,4 +50,7 @@ export default class User {
 
     @OneToOne(() => Wallet, (wallet) => wallet.user)
     wallet!: Relation<Wallet>;
+
+    @OneToOne(() => Profile, (profile) => profile.user)
+    profile!: Relation<Profile>;
 }

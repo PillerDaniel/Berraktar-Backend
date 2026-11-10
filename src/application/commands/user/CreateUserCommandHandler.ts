@@ -4,6 +4,7 @@ import type { IUserRepository } from '../../../domain/iRepositories/IUserReposit
 import type { IWalletRepository } from '../../../domain/iRepositories/IWalletRepository.js';
 import User from '../../../domain/models/User.js';
 import Wallet from '../../../domain/models/Wallet.js';
+import Profile from '../../../domain/models/Profile.js';
 
 import { AppError } from '../../../domain/errors/AppError.js';
 import { UserRole } from '../../../domain/enums/UserRole.js';
@@ -49,6 +50,10 @@ export class CreateUserCommandHandler {
 
         const wallet = new Wallet();
         wallet.user = user;
+
+        const profile = new Profile();
+        profile.user = user;
+
         await this.walletRepository.createWallet(wallet);
 
         return user;
