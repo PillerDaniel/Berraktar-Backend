@@ -12,6 +12,7 @@ import { connectRedis } from './application/utils/ConnectRedis.js';
 //route imports
 import authRouter from './api/routes/AuthRouter.js';
 import profileRouter from './api/routes/ProfileRouter.js';
+import adminRouter from './api/routes/AdminRouter.js';
 
 //middleware imports
 
@@ -41,7 +42,7 @@ const startServer = async () => {
     //routes
     app.use('/api/auth', authRouter);
     app.use('/api/profile', profileRouter);
-
+    app.use('/api/admin', adminRouter);
     app.get('/api', (req: Request, res: Response) => {
         res.send('API running');
     });

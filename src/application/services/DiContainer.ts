@@ -2,6 +2,7 @@
 import type { IUserRepository } from '../../domain/iRepositories/IUserRepository.js';
 import type { IWalletRepository } from '../../domain/iRepositories/IWalletRepository.js';
 import type { IProfileRepository } from '../../domain/iRepositories/IProfileRepository.js';
+import type { IConfigRepository } from '../../domain/iRepositories/IConfigRepository.js';
 
 //session store
 import type { ISessionStore } from '../../domain/iRepositories/ISessionStore.js';
@@ -11,6 +12,7 @@ import { RedisSessionStore } from '../../infrastructure/repositories/RedisSessio
 import UserRepository from '../../infrastructure/repositories/UserRepository.js';
 import WalletRepository from '../../infrastructure/repositories/WalletRepository.js';
 import ProfileRepository from '../../infrastructure/repositories/ProfileRepository.js';
+import ConfigRepository from '../../infrastructure/repositories/ConfigRepository.js';
 
 //command handlers
 import { CreateUserCommandHandler } from '../commands/user/CreateUserCommandHandler.js';
@@ -23,8 +25,12 @@ import { EditPostalCodeCommandHandler } from '../commands/profile/EditPostalCode
 import { EditAddressCommandHandler } from '../commands/profile/EditAddressCommandHandler.js';
 import { EditBankAccountNumberCommandHandler } from '../commands/profile/EditBankAccountNumberCommandHandler.js';
 
+import { EditConfigCommandHandler } from '../commands/config/EditConfigCommandHandler.js';
+
 //query handlers
 import { GetUserProfileQueryHandler } from '../queries/profile/GetUserProfileQueryHandler.js';
+
+import { GetConfigQueryHandler } from '../queries/config/GetConfigQueryHandler.js';
 
 //IServices
 
@@ -37,6 +43,7 @@ export class DiContainer {
     private _userRepository: IUserRepository | null = null;
     private _walletRepository: IWalletRepository | null = null;
     private _profileRepository: IProfileRepository | null = null;
+    private _configRepository: IConfigRepository | null = null;
 
     //session store
     private _sessionStore: ISessionStore | null = null;
@@ -53,10 +60,13 @@ export class DiContainer {
     private _editAddressCommandHandler: EditAddressCommandHandler | null = null;
     private _editBankAccountNumberCommandHandler: EditBankAccountNumberCommandHandler | null =
         null;
+    private _editConfigCommandHandler: EditConfigCommandHandler | null = null;
 
     //query handlers
     private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
         null;
+
+    private _getConfigQueryHandler: GetConfigQueryHandler | null = null;
 
     private constructor() {}
 
@@ -87,6 +97,13 @@ export class DiContainer {
             this._profileRepository = new ProfileRepository();
         }
         return this._profileRepository;
+    }
+
+    public get configRepository(): IConfigRepository {
+        if (!this._configRepository) {
+            this._configRepository = new ConfigRepository();
+        }
+        return this._configRepository;
     }
 
     public get sessionStore(): ISessionStore {
@@ -170,6 +187,15 @@ export class DiContainer {
         return this._editBankAccountNumberCommandHandler;
     }
 
+    public get EditConfigCommandHandler(): EditConfigCommandHandler {
+        if (!this._editConfigCommandHandler) {
+            this._editConfigCommandHandler = new EditConfigCommandHandler(
+                this.configRepository
+            );
+        }
+        return this._editConfigCommandHandler;
+    }
+
     //query handlers
     public get GetUserProfileQueryHandler(): GetUserProfileQueryHandler {
         if (!this._getUserProfileQueryHandler) {
@@ -178,6 +204,15 @@ export class DiContainer {
             );
         }
         return this._getUserProfileQueryHandler;
+    }
+
+    public get GetConfigQueryHandler(): GetConfigQueryHandler {
+        if (!this._getConfigQueryHandler) {
+            this._getConfigQueryHandler = new GetConfigQueryHandler(
+                this.configRepository
+            );
+        }
+        return this._getConfigQueryHandler;
     }
 }
 
