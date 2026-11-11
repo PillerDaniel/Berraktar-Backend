@@ -5,6 +5,9 @@ import { DataSource } from 'typeorm';
 import User from '../../domain/models/User.js';
 import Wallet from '../../domain/models/Wallet.js';
 import Profile from '../../domain/models/Profile.js';
+import Shelf from '../../domain/models/Shelf.js';
+import WareHouse from '../../domain/models/WareHouse.js';
+import Config from '../../domain/models/Config.js';
 
 loadEnv({
     path: path.resolve(process.cwd(), '../.env'),
@@ -24,7 +27,7 @@ export default new DataSource({
     synchronize: false,
     logging: false,
 
-    entities: [User, Wallet, Profile],
+    entities: [User, Wallet, Profile, WareHouse, Shelf, Config],
 
     migrations: [path.join(root, 'src/migrations/**/*.{ts,js}')],
 });
