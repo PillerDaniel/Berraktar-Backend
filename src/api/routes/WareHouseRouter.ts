@@ -15,20 +15,16 @@ const wareHouseController: WareHouseController = new WareHouseController(
 
 const router = express.Router();
 
-router.get('/', authMiddleware, (req: Request, res: Response) => {
+router.get('/', (req: Request, res: Response) => {
     return wareHouseController.getAllWareHouses(req, res);
 });
 
-router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
     return wareHouseController.getWareHouseById(req, res);
 });
 
-router.get(
-    '/shelf/:id',
-    authMiddleware,
-    async (req: Request, res: Response) => {
-        return wareHouseController.getShelfById(req, res);
-    }
-);
+router.get('/shelf/:id', async (req: Request, res: Response) => {
+    return wareHouseController.getShelfById(req, res);
+});
 
 export default router;
