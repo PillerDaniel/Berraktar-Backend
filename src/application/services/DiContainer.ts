@@ -30,6 +30,7 @@ import { EditBankAccountNumberCommandHandler } from '../commands/profile/EditBan
 import { EditConfigCommandHandler } from '../commands/config/EditConfigCommandHandler.js';
 
 import { CreateWareHouseCommandHandler } from '../commands/warehouse/CreateWareHouseCommandhandler.js';
+import { EditWareHouseCommandHandler } from '../commands/warehouse/EditWareHouseCommandHandler.js';
 
 //query handlers
 import { GetUserProfileQueryHandler } from '../queries/profile/GetUserProfileQueryHandler.js';
@@ -37,7 +38,7 @@ import { GetUserProfileQueryHandler } from '../queries/profile/GetUserProfileQue
 import { GetConfigQueryHandler } from '../queries/config/GetConfigQueryHandler.js';
 
 import { GetAllWareHouseQueryHandler } from '../queries/warehouse/GetAllWareHouseQueryHandler.js';
-
+import { GetWareHouseByIdQueryHandler } from '../queries/warehouse/GetWareHouseByIdQueryHandler.js';
 //IServices
 
 //Services
@@ -69,6 +70,8 @@ export class DiContainer {
     private _editConfigCommandHandler: EditConfigCommandHandler | null = null;
     private _createWareHouseCommandHandler: CreateWareHouseCommandHandler | null =
         null;
+    private _editWareHouseCommandHandler: EditWareHouseCommandHandler | null =
+        null;
 
     //query handlers
     private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
@@ -76,6 +79,9 @@ export class DiContainer {
 
     private _getConfigQueryHandler: GetConfigQueryHandler | null = null;
     private _getAllWareHouseQueryHandler: GetAllWareHouseQueryHandler | null =
+        null;
+
+    private _getWareHouseByIdQueryHandler: GetWareHouseByIdQueryHandler | null =
         null;
 
     private constructor() {}
@@ -121,6 +127,14 @@ export class DiContainer {
             this._wareHouseRepository = new WareHouseRepository();
         }
         return this._wareHouseRepository;
+    }
+
+    public get GetWareHouseByIdQueryHandler(): GetWareHouseByIdQueryHandler {
+        if (!this._getWareHouseByIdQueryHandler) {
+            this._getWareHouseByIdQueryHandler =
+                new GetWareHouseByIdQueryHandler(this.wareHouseRepository);
+        }
+        return this._getWareHouseByIdQueryHandler;
     }
 
     public get sessionStore(): ISessionStore {
@@ -219,6 +233,15 @@ export class DiContainer {
                 new CreateWareHouseCommandHandler(this.wareHouseRepository);
         }
         return this._createWareHouseCommandHandler;
+    }
+
+    public get EditWareHouseCommandHandler(): EditWareHouseCommandHandler {
+        if (!this._editWareHouseCommandHandler) {
+            this._editWareHouseCommandHandler = new EditWareHouseCommandHandler(
+                this.wareHouseRepository
+            );
+        }
+        return this._editWareHouseCommandHandler;
     }
 
     //query handlers

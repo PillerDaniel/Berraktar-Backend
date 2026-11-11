@@ -12,7 +12,9 @@ const adminController: AdminController = new AdminController(
     container.GetConfigQueryHandler,
     container.EditConfigCommandHandler,
     container.CreateWareHouseCommandHandler,
-    container.GetAllWareHouseQueryHandler
+    container.GetAllWareHouseQueryHandler,
+    container.GetWareHouseByIdQueryHandler,
+    container.EditWareHouseCommandHandler
 );
 
 const router = express.Router();
@@ -50,6 +52,24 @@ router.get(
     roleMiddleware(['admin']),
     (req: Request, res: Response) => {
         return adminController.getAllWareHouses(req, res);
+    }
+);
+
+router.get(
+    '/warehouse/:id',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    async (req: Request, res: Response) => {
+        return adminController.getWareHouseById(req, res);
+    }
+);
+
+router.put(
+    '/warehouse/:id',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    async (req: Request, res: Response) => {
+        return adminController.EditWareHouseByID(req, res);
     }
 );
 
