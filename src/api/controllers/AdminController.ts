@@ -81,6 +81,8 @@ export class AdminController {
 
             return res.status(200).json({
                 config: updatedConfig,
+                messageHu: 'A konfiguráció sikeresen frissítve lett.',
+                messageEn: 'Configuration updated successfully.',
             });
         } catch (error) {
             if (error instanceof AppError) {
@@ -117,6 +119,8 @@ export class AdminController {
 
             return res.status(201).json({
                 warehouse: newWareHouse,
+                messageHu: 'A raktár sikeresen létrehozva.',
+                messageEn: 'Warehouse created successfully.',
             });
         } catch (error) {
             if (error instanceof AppError) {
@@ -274,6 +278,8 @@ export class AdminController {
 
             return res.status(201).json({
                 shelf: newShelf,
+                messageHu: 'A polc sikeresen létrehozva.',
+                messageEn: 'Shelf created successfully.',
             });
         } catch (error) {
             if (error instanceof AppError) {
@@ -366,6 +372,8 @@ export class AdminController {
 
             return res.status(200).json({
                 shelf: updatedShelf,
+                messageHu: 'A polc sikeresen frissítve lett.',
+                messageEn: 'Shelf updated successfully.',
             });
         } catch (error) {
             if (error instanceof AppError) {
