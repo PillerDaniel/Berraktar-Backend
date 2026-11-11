@@ -12,15 +12,10 @@ import { EditConfigCommand } from '../../application/commands/config/EditConfigC
 import { EditConfigCommandHandler } from '../../application/commands/config/EditConfigCommandHandler.js';
 import { CreateWareHouseCommand } from '../../application/commands/warehouse/CreateWareHouseCommand.js';
 import { CreateWareHouseCommandHandler } from '../../application/commands/warehouse/CreateWareHouseCommandhandler.js';
-import { GetAllWareHouseQueryHandler } from '../../application/queries/warehouse/GetAllWareHouseQueryHandler.js';
-import { GetWareHouseByIdQuery } from '../../application/queries/warehouse/GetWareHouseByIdQuery.js';
-import { GetWareHouseByIdQueryHandler } from '../../application/queries/warehouse/GetWareHouseByIdQueryHandler.js';
 import { EditWareHouseCommand } from '../../application/commands/warehouse/EditWareHouseCommand.js';
 import { EditWareHouseCommandHandler } from '../../application/commands/warehouse/EditWareHouseCommandHandler.js';
 import { CreateShelfCommand } from '../../application/commands/shelf/CreateShelfCommand.js';
 import { CreateShelfCommandHandler } from '../../application/commands/shelf/CreateShelfCommandHandler.js';
-import { GetShelfByIdQuery } from '../../application/queries/shelf/GetShelfByIdQuery.js';
-import { GetShelfByIdQueryHandler } from '../../application/queries/shelf/GetShelfByIdQueryHandler.js';
 import { EditShelfCommand } from '../../application/commands/shelf/EditShelfCommand.js';
 import { EditShelfCommandHandler } from '../../application/commands/shelf/EditShelfCommandHandler.js';
 
@@ -31,11 +26,8 @@ export class AdminController {
         private readonly getConfigQueryHandler: GetConfigQueryHandler,
         private readonly editConfigCommandHandler: EditConfigCommandHandler,
         private readonly createWareHouseCommandHandler: CreateWareHouseCommandHandler,
-        private readonly getAllWareHouseQueryHandler: GetAllWareHouseQueryHandler,
-        private readonly getWareHouseByIdQueryHandler: GetWareHouseByIdQueryHandler,
         private readonly editWareHouseCommandHandler: EditWareHouseCommandHandler,
         private readonly createShelfCommandHandler: CreateShelfCommandHandler,
-        private readonly getShelfByIdQueryHandler: GetShelfByIdQueryHandler,
         private readonly editShelfCommandHandler: EditShelfCommandHandler
     ) {}
 
@@ -121,64 +113,6 @@ export class AdminController {
                 warehouse: newWareHouse,
                 messageHu: 'A raktár sikeresen létrehozva.',
                 messageEn: 'Warehouse created successfully.',
-            });
-        } catch (error) {
-            if (error instanceof AppError) {
-                return res.status(error.statusCode).json({
-                    messageHu: error.messageHu,
-                    messageEn: error.messageEn,
-                });
-            }
-
-            return res.status(500).json({
-                messageHu: 'Szerver hiba.',
-                messageEn: 'Server error.',
-            });
-        }
-    }
-
-    async getAllWareHouses(
-        req: Request,
-        res: Response
-    ): Promise<void | Response> {
-        try {
-            const warehouses = await this.getAllWareHouseQueryHandler.handle();
-            return res.status(200).json({
-                warehouses,
-            });
-        } catch (error) {
-            if (error instanceof AppError) {
-                return res.status(error.statusCode).json({
-                    messageHu: error.messageHu,
-                    messageEn: error.messageEn,
-                });
-            }
-
-            return res.status(500).json({
-                messageHu: 'Szerver hiba.',
-                messageEn: 'Server error.',
-            });
-        }
-    }
-    async getWareHouseById(
-        req: Request,
-        res: Response
-    ): Promise<void | Response> {
-        try {
-            const warehouseId = req.params.id as string;
-            const query = new GetWareHouseByIdQuery(warehouseId);
-            const warehouse =
-                await this.getWareHouseByIdQueryHandler.handle(query);
-
-            if (!warehouse) {
-                return res.status(404).json({
-                    messageHu: 'A raktár nem található.',
-                    messageEn: 'Warehouse not found.',
-                });
-            }
-
-            return res.status(200).json({
-                warehouse,
             });
         } catch (error) {
             if (error instanceof AppError) {
@@ -295,36 +229,7 @@ export class AdminController {
             });
         }
     }
-    async getShelfById(req: Request, res: Response): Promise<void | Response> {
-        try {
-            const shelfId = req.params.id as string;
-            const query = new GetShelfByIdQuery(shelfId);
-            const shelf = await this.getShelfByIdQueryHandler.handle(query);
 
-            if (!shelf) {
-                return res.status(404).json({
-                    messageHu: 'A polc nem található.',
-                    messageEn: 'Shelf not found.',
-                });
-            }
-
-            return res.status(200).json({
-                shelf,
-            });
-        } catch (error) {
-            if (error instanceof AppError) {
-                return res.status(error.statusCode).json({
-                    messageHu: error.messageHu,
-                    messageEn: error.messageEn,
-                });
-            }
-
-            return res.status(500).json({
-                messageHu: 'Szerver hiba.',
-                messageEn: 'Server error.',
-            });
-        }
-    }
     async editShelfById(req: Request, res: Response): Promise<void | Response> {
         try {
             const shelfId = req.params.id as string;

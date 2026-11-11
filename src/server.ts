@@ -13,6 +13,7 @@ import { connectRedis } from './application/utils/ConnectRedis.js';
 import authRouter from './api/routes/AuthRouter.js';
 import profileRouter from './api/routes/ProfileRouter.js';
 import adminRouter from './api/routes/AdminRouter.js';
+import wareHouseRouter from './api/routes/WareHouseRouter.js';
 
 //middleware imports
 
@@ -43,6 +44,7 @@ const startServer = async () => {
     app.use('/api/auth', authRouter);
     app.use('/api/profile', profileRouter);
     app.use('/api/admin', adminRouter);
+    app.use('/api/warehouse', wareHouseRouter);
     app.get('/api', (req: Request, res: Response) => {
         res.send('API running');
     });
