@@ -10,7 +10,9 @@ import roleMiddleware from '../middlewares/RoleMiddleWare.js';
 
 const adminController: AdminController = new AdminController(
     container.GetConfigQueryHandler,
-    container.EditConfigCommandHandler
+    container.EditConfigCommandHandler,
+    container.CreateWareHouseCommandHandler,
+    container.GetAllWareHouseQueryHandler
 );
 
 const router = express.Router();
@@ -30,6 +32,24 @@ router.put(
     roleMiddleware(['admin']),
     (req: Request, res: Response) => {
         return adminController.updateConfig(req, res);
+    }
+);
+
+router.post(
+    '/warehouse',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    (req: Request, res: Response) => {
+        return adminController.createWareHouse(req, res);
+    }
+);
+
+router.get(
+    '/warehouse',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    (req: Request, res: Response) => {
+        return adminController.getAllWareHouses(req, res);
     }
 );
 
