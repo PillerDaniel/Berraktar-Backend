@@ -3,6 +3,9 @@
 import type { Request, Response } from 'express';
 import { AppError } from '../../domain/errors/AppError.js';
 
+import { ShelfType } from '../../domain/enums/ShelfType.js';
+import { ShelfStatus } from '../../domain/enums/ShelfStatus.js';
+
 //commands, handlers, queries
 import { GetConfigQueryHandler } from '../../application/queries/config/GetConfigQueryHandler.js';
 import { EditConfigCommand } from '../../application/commands/config/EditConfigCommand.js';
@@ -14,6 +17,12 @@ import { GetWareHouseByIdQuery } from '../../application/queries/warehouse/GetWa
 import { GetWareHouseByIdQueryHandler } from '../../application/queries/warehouse/GetWareHouseByIdQueryHandler.js';
 import { EditWareHouseCommand } from '../../application/commands/warehouse/EditWareHouseCommand.js';
 import { EditWareHouseCommandHandler } from '../../application/commands/warehouse/EditWareHouseCommandHandler.js';
+import { CreateShelfCommand } from '../../application/commands/shelf/CreateShelfCommand.js';
+import { CreateShelfCommandHandler } from '../../application/commands/shelf/CreateShelfCommandHandler.js';
+import { GetShelfByIdQuery } from '../../application/queries/shelf/GetShelfByIdQuery.js';
+import { GetShelfByIdQueryHandler } from '../../application/queries/shelf/GetShelfByIdQueryHandler.js';
+import { EditShelfCommand } from '../../application/commands/shelf/EditShelfCommand.js';
+import { EditShelfCommandHandler } from '../../application/commands/shelf/EditShelfCommandHandler.js';
 
 import Config from '../../domain/models/Config.js';
 
@@ -24,7 +33,10 @@ export class AdminController {
         private readonly createWareHouseCommandHandler: CreateWareHouseCommandHandler,
         private readonly getAllWareHouseQueryHandler: GetAllWareHouseQueryHandler,
         private readonly getWareHouseByIdQueryHandler: GetWareHouseByIdQueryHandler,
-        private readonly editWareHouseCommandHandler: EditWareHouseCommandHandler
+        private readonly editWareHouseCommandHandler: EditWareHouseCommandHandler,
+        private readonly createShelfCommandHandler: CreateShelfCommandHandler,
+        private readonly getShelfByIdQueryHandler: GetShelfByIdQueryHandler,
+        private readonly editShelfCommandHandler: EditShelfCommandHandler
     ) {}
 
     async getConfig(req: Request, res: Response): Promise<void | Response> {
@@ -208,6 +220,152 @@ export class AdminController {
             return res.status(200).json({
                 messageHu: 'A raktár sikeresen frissítve lett.',
                 messageEn: 'Warehouse updated successfully.',
+            });
+        } catch (error) {
+            if (error instanceof AppError) {
+                return res.status(error.statusCode).json({
+                    messageHu: error.messageHu,
+                    messageEn: error.messageEn,
+                });
+            }
+
+            return res.status(500).json({
+                messageHu: 'Szerver hiba.',
+                messageEn: 'Server error.',
+            });
+        }
+    }
+
+    async createShelf(req: Request, res: Response): Promise<void | Response> {
+        try {
+            const { warehouseId, capacity, type, status } = req.body;
+
+            if (!Object.values(ShelfType).includes(type)) {
+                return res.status(400).json({
+                    messageHu: 'Érvénytelen polc típus.',
+                    messageEn: 'Invalid shelf type.',
+                });
+            }
+
+            if (!Object.values(ShelfStatus).includes(status)) {
+                return res.status(400).json({
+                    messageHu: 'Érvénytelen polc státusz.',
+                    messageEn: 'Invalid shelf status.',
+                });
+            }
+
+            if (!warehouseId || !capacity || !type || !status) {
+                return res.status(400).json({
+                    messageHu:
+                        'A raktár azonosító, kapacitás, típus és státusz megadása kötelező.',
+                    messageEn:
+                        'Warehouse ID, capacity, type and status are required.',
+                });
+            }
+
+            const command = new CreateShelfCommand(
+                warehouseId,
+                capacity,
+                type,
+                status
+            );
+            const newShelf =
+                await this.createShelfCommandHandler.handle(command);
+
+            return res.status(201).json({
+                shelf: newShelf,
+            });
+        } catch (error) {
+            if (error instanceof AppError) {
+                return res.status(error.statusCode).json({
+                    messageHu: error.messageHu,
+                    messageEn: error.messageEn,
+                });
+            }
+
+            return res.status(500).json({
+                messageHu: 'Szerver hiba.',
+                messageEn: 'Server error.',
+            });
+        }
+    }
+    async getShelfById(req: Request, res: Response): Promise<void | Response> {
+        try {
+            const shelfId = req.params.id as string;
+            const query = new GetShelfByIdQuery(shelfId);
+            const shelf = await this.getShelfByIdQueryHandler.handle(query);
+
+            if (!shelf) {
+                return res.status(404).json({
+                    messageHu: 'A polc nem található.',
+                    messageEn: 'Shelf not found.',
+                });
+            }
+
+            return res.status(200).json({
+                shelf,
+            });
+        } catch (error) {
+            if (error instanceof AppError) {
+                return res.status(error.statusCode).json({
+                    messageHu: error.messageHu,
+                    messageEn: error.messageEn,
+                });
+            }
+
+            return res.status(500).json({
+                messageHu: 'Szerver hiba.',
+                messageEn: 'Server error.',
+            });
+        }
+    }
+    async editShelfById(req: Request, res: Response): Promise<void | Response> {
+        try {
+            const shelfId = req.params.id as string;
+            const { warehouseId, capacity, type, status } = req.body;
+
+            if (!Object.values(ShelfType).includes(type)) {
+                return res.status(400).json({
+                    messageHu: 'Érvénytelen polc típus.',
+                    messageEn: 'Invalid shelf type.',
+                });
+            }
+
+            if (!Object.values(ShelfStatus).includes(status)) {
+                return res.status(400).json({
+                    messageHu: 'Érvénytelen polc státusz.',
+                    messageEn: 'Invalid shelf status.',
+                });
+            }
+
+            if (!warehouseId || !capacity || !type || !status) {
+                return res.status(400).json({
+                    messageHu:
+                        'A raktár azonosító, kapacitás, típus és státusz megadása kötelező.',
+                    messageEn:
+                        'Warehouse ID, capacity, type and status are required.',
+                });
+            }
+
+            const command = new EditShelfCommand(
+                shelfId,
+                warehouseId,
+                capacity,
+                type,
+                status
+            );
+            const updatedShelf =
+                await this.editShelfCommandHandler.handle(command);
+
+            if (!updatedShelf) {
+                return res.status(404).json({
+                    messageHu: 'A polc nem található.',
+                    messageEn: 'Shelf not found.',
+                });
+            }
+
+            return res.status(200).json({
+                shelf: updatedShelf,
             });
         } catch (error) {
             if (error instanceof AppError) {

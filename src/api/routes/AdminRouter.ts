@@ -14,7 +14,10 @@ const adminController: AdminController = new AdminController(
     container.CreateWareHouseCommandHandler,
     container.GetAllWareHouseQueryHandler,
     container.GetWareHouseByIdQueryHandler,
-    container.EditWareHouseCommandHandler
+    container.EditWareHouseCommandHandler,
+    container.CreateShelfCommandHandler,
+    container.GetShelfByIdQueryHandler,
+    container.EditShelfCommandHandler
 );
 
 const router = express.Router();
@@ -70,6 +73,33 @@ router.put(
     roleMiddleware(['admin']),
     async (req: Request, res: Response) => {
         return adminController.EditWareHouseByID(req, res);
+    }
+);
+
+router.post(
+    '/shelf',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    async (req: Request, res: Response) => {
+        return adminController.createShelf(req, res);
+    }
+);
+
+router.get(
+    '/shelf/:id',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    async (req: Request, res: Response) => {
+        return adminController.getShelfById(req, res);
+    }
+);
+
+router.put(
+    '/shelf/:id',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    async (req: Request, res: Response) => {
+        return adminController.editShelfById(req, res);
     }
 );
 

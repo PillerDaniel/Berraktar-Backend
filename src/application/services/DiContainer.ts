@@ -4,6 +4,7 @@ import type { IWalletRepository } from '../../domain/iRepositories/IWalletReposi
 import type { IProfileRepository } from '../../domain/iRepositories/IProfileRepository.js';
 import type { IConfigRepository } from '../../domain/iRepositories/IConfigRepository.js';
 import type { IWareHouseRepository } from '../../domain/iRepositories/IWareHouseRepository.js';
+import type { IShelfRepository } from '../../domain/iRepositories/IShelfRepository.js';
 
 //session store
 import type { ISessionStore } from '../../domain/iRepositories/ISessionStore.js';
@@ -15,6 +16,7 @@ import WalletRepository from '../../infrastructure/repositories/WalletRepository
 import ProfileRepository from '../../infrastructure/repositories/ProfileRepository.js';
 import ConfigRepository from '../../infrastructure/repositories/ConfigRepository.js';
 import WareHouseRepository from '../../infrastructure/repositories/WareHouseRepository.js';
+import ShelfRepository from '../../infrastructure/repositories/ShelfRepository.js';
 
 //command handlers
 import { CreateUserCommandHandler } from '../commands/user/CreateUserCommandHandler.js';
@@ -32,6 +34,9 @@ import { EditConfigCommandHandler } from '../commands/config/EditConfigCommandHa
 import { CreateWareHouseCommandHandler } from '../commands/warehouse/CreateWareHouseCommandhandler.js';
 import { EditWareHouseCommandHandler } from '../commands/warehouse/EditWareHouseCommandHandler.js';
 
+import { CreateShelfCommandHandler } from '../commands/shelf/CreateShelfCommandHandler.js';
+import { EditShelfCommandHandler } from '../commands/shelf/EditShelfCommandHandler.js';
+
 //query handlers
 import { GetUserProfileQueryHandler } from '../queries/profile/GetUserProfileQueryHandler.js';
 
@@ -39,6 +44,8 @@ import { GetConfigQueryHandler } from '../queries/config/GetConfigQueryHandler.j
 
 import { GetAllWareHouseQueryHandler } from '../queries/warehouse/GetAllWareHouseQueryHandler.js';
 import { GetWareHouseByIdQueryHandler } from '../queries/warehouse/GetWareHouseByIdQueryHandler.js';
+
+import { GetShelfByIdQueryHandler } from '../queries/shelf/GetShelfByIdQueryHandler.js';
 //IServices
 
 //Services
@@ -52,6 +59,7 @@ export class DiContainer {
     private _profileRepository: IProfileRepository | null = null;
     private _configRepository: IConfigRepository | null = null;
     private _wareHouseRepository: IWareHouseRepository | null = null;
+    private _shelfRepository: IShelfRepository | null = null;
     //session store
     private _sessionStore: ISessionStore | null = null;
 
@@ -72,6 +80,8 @@ export class DiContainer {
         null;
     private _editWareHouseCommandHandler: EditWareHouseCommandHandler | null =
         null;
+    private _createShelfCommandHandler: CreateShelfCommandHandler | null = null;
+    private _editShelfCommandHandler: EditShelfCommandHandler | null = null;
 
     //query handlers
     private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
@@ -83,6 +93,7 @@ export class DiContainer {
 
     private _getWareHouseByIdQueryHandler: GetWareHouseByIdQueryHandler | null =
         null;
+    private _getShelfByIdQueryHandler: GetShelfByIdQueryHandler | null = null;
 
     private constructor() {}
 
@@ -129,12 +140,11 @@ export class DiContainer {
         return this._wareHouseRepository;
     }
 
-    public get GetWareHouseByIdQueryHandler(): GetWareHouseByIdQueryHandler {
-        if (!this._getWareHouseByIdQueryHandler) {
-            this._getWareHouseByIdQueryHandler =
-                new GetWareHouseByIdQueryHandler(this.wareHouseRepository);
+    public get shelfRepository(): IShelfRepository {
+        if (!this._shelfRepository) {
+            this._shelfRepository = new ShelfRepository();
         }
-        return this._getWareHouseByIdQueryHandler;
+        return this._shelfRepository;
     }
 
     public get sessionStore(): ISessionStore {
@@ -244,6 +254,24 @@ export class DiContainer {
         return this._editWareHouseCommandHandler;
     }
 
+    public get CreateShelfCommandHandler(): CreateShelfCommandHandler {
+        if (!this._createShelfCommandHandler) {
+            this._createShelfCommandHandler = new CreateShelfCommandHandler(
+                this.shelfRepository
+            );
+        }
+        return this._createShelfCommandHandler;
+    }
+
+    public get EditShelfCommandHandler(): EditShelfCommandHandler {
+        if (!this._editShelfCommandHandler) {
+            this._editShelfCommandHandler = new EditShelfCommandHandler(
+                this.shelfRepository
+            );
+        }
+        return this._editShelfCommandHandler;
+    }
+
     //query handlers
     public get GetUserProfileQueryHandler(): GetUserProfileQueryHandler {
         if (!this._getUserProfileQueryHandler) {
@@ -270,6 +298,21 @@ export class DiContainer {
             );
         }
         return this._getAllWareHouseQueryHandler;
+    }
+    public get GetWareHouseByIdQueryHandler(): GetWareHouseByIdQueryHandler {
+        if (!this._getWareHouseByIdQueryHandler) {
+            this._getWareHouseByIdQueryHandler =
+                new GetWareHouseByIdQueryHandler(this.wareHouseRepository);
+        }
+        return this._getWareHouseByIdQueryHandler;
+    }
+    public get GetShelfByIdQueryHandler(): GetShelfByIdQueryHandler {
+        if (!this._getShelfByIdQueryHandler) {
+            this._getShelfByIdQueryHandler = new GetShelfByIdQueryHandler(
+                this.shelfRepository
+            );
+        }
+        return this._getShelfByIdQueryHandler;
     }
 }
 
