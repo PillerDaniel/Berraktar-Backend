@@ -10,7 +10,7 @@ export class CreateWareHouseCommandHandler {
         warehouse.country = command.country;
         warehouse.city = command.city;
         warehouse.address = command.address;
-        warehouse.active = true;
+        warehouse.active = command.active;
 
         return await this.wareHouseRepository.createWareHouse(warehouse);
     }

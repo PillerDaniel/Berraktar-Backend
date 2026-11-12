@@ -96,7 +96,7 @@ export class AdminController {
         res: Response
     ): Promise<void | Response> {
         try {
-            const { country, city, address } = req.body;
+            const { country, city, address, active } = req.body;
 
             if (!country || !city || !address) {
                 return res.status(400).json({
@@ -105,7 +105,19 @@ export class AdminController {
                 });
             }
 
-            const command = new CreateWareHouseCommand(country, city, address);
+            if (active === undefined) {
+                return res.status(400).json({
+                    messageHu: 'Az aktív státusz megadása kötelező.',
+                    messageEn: 'Active status is required.',
+                });
+            }
+
+            const command = new CreateWareHouseCommand(
+                country,
+                city,
+                address,
+                active
+            );
             const newWareHouse =
                 await this.createWareHouseCommandHandler.handle(command);
 
