@@ -5,6 +5,7 @@ import type { IProfileRepository } from '../../domain/iRepositories/IProfileRepo
 import type { IConfigRepository } from '../../domain/iRepositories/IConfigRepository.js';
 import type { IWareHouseRepository } from '../../domain/iRepositories/IWareHouseRepository.js';
 import type { IShelfRepository } from '../../domain/iRepositories/IShelfRepository.js';
+import type { IBookingRepository } from '../../domain/iRepositories/IBookingRepository.js';
 
 //session store
 import type { ISessionStore } from '../../domain/iRepositories/ISessionStore.js';
@@ -17,6 +18,7 @@ import ProfileRepository from '../../infrastructure/repositories/ProfileReposito
 import ConfigRepository from '../../infrastructure/repositories/ConfigRepository.js';
 import WareHouseRepository from '../../infrastructure/repositories/WareHouseRepository.js';
 import ShelfRepository from '../../infrastructure/repositories/ShelfRepository.js';
+import BookingRepository from '../../infrastructure/repositories/BookingRepository.js';
 
 //command handlers
 import { CreateUserCommandHandler } from '../commands/user/CreateUserCommandHandler.js';
@@ -37,6 +39,9 @@ import { EditWareHouseCommandHandler } from '../commands/warehouse/EditWareHouse
 import { CreateShelfCommandHandler } from '../commands/shelf/CreateShelfCommandHandler.js';
 import { EditShelfCommandHandler } from '../commands/shelf/EditShelfCommandHandler.js';
 
+import { CreateBookingCommandHandler } from '../commands/booking/CreateBookingCommandHandler.js';
+import { DepositToWalletCommandHandler } from '../commands/wallet/DepositToWalletCommandHandler.js';
+
 //query handlers
 import { GetUserProfileQueryHandler } from '../queries/profile/GetUserProfileQueryHandler.js';
 
@@ -46,6 +51,10 @@ import { GetAllWareHouseQueryHandler } from '../queries/warehouse/GetAllWareHous
 import { GetWareHouseByIdQueryHandler } from '../queries/warehouse/GetWareHouseByIdQueryHandler.js';
 
 import { GetShelfByIdQueryHandler } from '../queries/shelf/GetShelfByIdQueryHandler.js';
+
+import { GetBookingQuoteQueryHandler } from '../queries/booking/GetBookingQuoteQueryHandler.js';
+import { GetUserBookingsQueryHandler } from '../queries/booking/GetUserBookingsQueryHandler.js';
+import { GetWalletQueryHandler } from '../queries/wallet/GetWalletQueryHandler.js';
 //IServices
 
 //Services
@@ -60,6 +69,7 @@ export class DiContainer {
     private _configRepository: IConfigRepository | null = null;
     private _wareHouseRepository: IWareHouseRepository | null = null;
     private _shelfRepository: IShelfRepository | null = null;
+    private _bookingRepository: IBookingRepository | null = null;
     //session store
     private _sessionStore: ISessionStore | null = null;
 
@@ -82,6 +92,10 @@ export class DiContainer {
         null;
     private _createShelfCommandHandler: CreateShelfCommandHandler | null = null;
     private _editShelfCommandHandler: EditShelfCommandHandler | null = null;
+    private _createBookingCommandHandler: CreateBookingCommandHandler | null =
+        null;
+    private _depositToWalletCommandHandler: DepositToWalletCommandHandler | null =
+        null;
 
     //query handlers
     private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
@@ -94,6 +108,11 @@ export class DiContainer {
     private _getWareHouseByIdQueryHandler: GetWareHouseByIdQueryHandler | null =
         null;
     private _getShelfByIdQueryHandler: GetShelfByIdQueryHandler | null = null;
+    private _getBookingQuoteQueryHandler: GetBookingQuoteQueryHandler | null =
+        null;
+    private _getUserBookingsQueryHandler: GetUserBookingsQueryHandler | null =
+        null;
+    private _getWalletQueryHandler: GetWalletQueryHandler | null = null;
 
     private constructor() {}
 
@@ -145,6 +164,13 @@ export class DiContainer {
             this._shelfRepository = new ShelfRepository();
         }
         return this._shelfRepository;
+    }
+
+    public get bookingRepository(): IBookingRepository {
+        if (!this._bookingRepository) {
+            this._bookingRepository = new BookingRepository();
+        }
+        return this._bookingRepository;
     }
 
     public get sessionStore(): ISessionStore {
@@ -272,6 +298,24 @@ export class DiContainer {
         return this._editShelfCommandHandler;
     }
 
+    public get CreateBookingCommandHandler(): CreateBookingCommandHandler {
+        if (!this._createBookingCommandHandler) {
+            this._createBookingCommandHandler = new CreateBookingCommandHandler(
+                this.bookingRepository,
+                this.configRepository
+            );
+        }
+        return this._createBookingCommandHandler;
+    }
+
+    public get DepositToWalletCommandHandler(): DepositToWalletCommandHandler {
+        if (!this._depositToWalletCommandHandler) {
+            this._depositToWalletCommandHandler =
+                new DepositToWalletCommandHandler(this.walletRepository);
+        }
+        return this._depositToWalletCommandHandler;
+    }
+
     //query handlers
     public get GetUserProfileQueryHandler(): GetUserProfileQueryHandler {
         if (!this._getUserProfileQueryHandler) {
@@ -313,6 +357,34 @@ export class DiContainer {
             );
         }
         return this._getShelfByIdQueryHandler;
+    }
+
+    public get GetBookingQuoteQueryHandler(): GetBookingQuoteQueryHandler {
+        if (!this._getBookingQuoteQueryHandler) {
+            this._getBookingQuoteQueryHandler = new GetBookingQuoteQueryHandler(
+                this.bookingRepository,
+                this.configRepository
+            );
+        }
+        return this._getBookingQuoteQueryHandler;
+    }
+
+    public get GetUserBookingsQueryHandler(): GetUserBookingsQueryHandler {
+        if (!this._getUserBookingsQueryHandler) {
+            this._getUserBookingsQueryHandler = new GetUserBookingsQueryHandler(
+                this.bookingRepository
+            );
+        }
+        return this._getUserBookingsQueryHandler;
+    }
+
+    public get GetWalletQueryHandler(): GetWalletQueryHandler {
+        if (!this._getWalletQueryHandler) {
+            this._getWalletQueryHandler = new GetWalletQueryHandler(
+                this.walletRepository
+            );
+        }
+        return this._getWalletQueryHandler;
     }
 }
 

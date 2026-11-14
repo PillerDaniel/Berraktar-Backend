@@ -8,6 +8,9 @@ import Profile from '../../domain/models/Profile.js';
 import Shelf from '../../domain/models/Shelf.js';
 import WareHouse from '../../domain/models/WareHouse.js';
 import Config from '../../domain/models/Config.js';
+import Booking from '../../domain/models/Booking.js';
+import BookingShelf from '../../domain/models/BookingShelf.js';
+import Invoice from '../../domain/models/Invoice.js';
 
 loadEnv({
     path: path.resolve(process.cwd(), '../.env'),
@@ -27,7 +30,17 @@ export default new DataSource({
     synchronize: false,
     logging: false,
 
-    entities: [User, Wallet, Profile, WareHouse, Shelf, Config],
+    entities: [
+        User,
+        Wallet,
+        Profile,
+        WareHouse,
+        Shelf,
+        Config,
+        Booking,
+        BookingShelf,
+        Invoice,
+    ],
 
     migrations: [path.join(root, 'src/migrations/**/*.{ts,js}')],
 });
