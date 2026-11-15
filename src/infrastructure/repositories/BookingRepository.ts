@@ -295,6 +295,7 @@ export default class BookingRepository implements IBookingRepository {
                 );
             }
 
+            // a shortening has a negative amount, so this pays it back
             wallet.balance = balance - amount;
             await manager.save(wallet);
 
@@ -441,19 +442,31 @@ export default class BookingRepository implements IBookingRepository {
         if (!OCCUPYING_STATUSES.includes(booking.status)) {
             throw new AppError(
                 409,
-                'Only active bookings can be extended.',
-                'Csak aktív foglalás hosszabbítható meg.'
+                'Only active bookings can be changed.',
+                'Csak aktív foglalás módosítható.'
             );
         }
 
+        // negative when the booking gets shorter
         const extraDays = countBookingDays(booking.endDate, newEndDate);
 
-        if (extraDays < 1) {
+        if (extraDays === 0) {
             throw new AppError(
                 400,
-                'The new end date must be after the current end date.',
-                'Az új végdátumnak a jelenlegi végdátum után kell lennie.'
+                'The new end date is the same as the current one.',
+                'Az új végdátum megegyezik a jelenlegivel.'
             );
+        }
+
+        if (extraDays < 0) {
+            const refund = await this.shorteningRefund(
+                manager,
+                booking,
+                newEndDate
+            );
+
+            // a negative amount is money going back to the wallet
+            return { booking, extraDays, amount: -refund };
         }
 
         if (lock) {
@@ -515,6 +528,49 @@ export default class BookingRepository implements IBookingRepository {
         );
 
         return { booking, extraDays, amount };
+    }
+
+    /**
+     * Money going back when the end date moves earlier: the share of what
+     * was paid that belongs to the dropped days.
+     */
+    private async shorteningRefund(
+        manager: EntityManager,
+        booking: Booking,
+        newEndDate: string
+    ): Promise<number> {
+        if (booking.startDate <= todayIsoDate()) {
+            throw new AppError(
+                409,
+                'A booking can only be shortened before its start date.',
+                'A foglalás csak a kezdődátum előtt rövidíthető.'
+            );
+        }
+
+        const remainingDays = countBookingDays(booking.startDate, newEndDate);
+
+        if (remainingDays < 1) {
+            throw new AppError(
+                400,
+                'The new end date must be after the start date.',
+                'Az új végdátumnak a kezdődátum után kell lennie.'
+            );
+        }
+
+        const currentDays = countBookingDays(
+            booking.startDate,
+            booking.endDate
+        );
+        // earlier shortenings are stored as negative paid invoices
+        const paidInvoices = await manager.find(Invoice, {
+            where: { bookingId: booking.id, status: InvoiceStatus.PAID },
+        });
+        const paid = paidInvoices.reduce(
+            (sum, invoice) => sum + invoice.amount,
+            0
+        );
+
+        return Math.round((paid * (currentDays - remainingDays)) / currentDays);
     }
 
     private async queryAvailability(

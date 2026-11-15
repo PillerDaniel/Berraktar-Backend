@@ -182,8 +182,13 @@ export class BookingController {
                 amount,
                 balance,
                 messageHu:
-                    'A foglalás meghosszabbítva, a különbözet kifizetve.',
-                messageEn: 'Booking extended, the difference has been paid.',
+                    amount < 0
+                        ? 'A foglalás lerövidítve, a különbözetet visszatérítettük az egyenlegre.'
+                        : 'A foglalás meghosszabbítva, a különbözet kifizetve.',
+                messageEn:
+                    amount < 0
+                        ? 'Booking shortened, the difference was refunded to your balance.'
+                        : 'Booking extended, the difference has been paid.',
             });
         } catch (error) {
             return this.sendError(res, error);
