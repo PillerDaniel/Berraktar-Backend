@@ -2,7 +2,10 @@ import type { EntityManager } from 'typeorm';
 
 import type {
     AvailabilityFilter,
+    CancelBookingResult,
     CreatePaidBookingInput,
+    ExtendBookingResult,
+    ExtensionQuote,
     IBookingRepository,
     PaidBookingResult,
 } from '../../domain/iRepositories/IBookingRepository.js';
@@ -15,8 +18,12 @@ import Booking from '../../domain/models/Booking.js';
 import BookingShelf from '../../domain/models/BookingShelf.js';
 import Invoice from '../../domain/models/Invoice.js';
 import Wallet from '../../domain/models/Wallet.js';
-import { countBookingDays } from '../../domain/services/BookingPeriod.js';
+import {
+    countBookingDays,
+    todayIsoDate,
+} from '../../domain/services/BookingPeriod.js';
 import { calculateInvoiceAmount } from '../../domain/services/InvoiceCalculator.js';
+import type { PricingConfig } from '../../domain/services/InvoiceCalculator.js';
 import { allocatePallets } from '../../domain/services/ShelfAllocator.js';
 import type { ShelfAvailability } from '../../domain/services/ShelfAllocator.js';
 import dataSource from '../db/DataSource.js';
@@ -30,6 +37,17 @@ interface AvailabilityRow {
     country: string;
     city: string;
     address: string;
+}
+
+interface ExtensionShelfRow {
+    shelfId: string;
+    type: ShelfType;
+    assignedPallets: number;
+    free: number;
+}
+
+interface PreparedExtension extends ExtensionQuote {
+    booking: Booking;
 }
 
 // Bookings in these states still occupy their shelves.
@@ -150,6 +168,326 @@ export default class BookingRepository implements IBookingRepository {
             },
             order: { startDate: 'DESC' },
         });
+    }
+
+    async cancelBooking(
+        bookingId: string,
+        userId: string
+    ): Promise<CancelBookingResult> {
+        return await dataSource.transaction(async (manager) => {
+            const booking = await this.findBooking(
+                manager,
+                bookingId,
+                userId,
+                true
+            );
+
+            if (booking.status !== BookingStatus.PENDING) {
+                throw new AppError(
+                    409,
+                    'Only bookings awaiting delivery can be cancelled.',
+                    'Csak beszállításra váró foglalás mondható le.'
+                );
+            }
+
+            if (booking.startDate <= todayIsoDate()) {
+                throw new AppError(
+                    409,
+                    'A booking can only be cancelled before its start date.',
+                    'A foglalás csak a kezdődátum előtt mondható le.'
+                );
+            }
+
+            const paidInvoices = await manager.find(Invoice, {
+                where: { bookingId, status: InvoiceStatus.PAID },
+            });
+            const refundedAmount = paidInvoices.reduce(
+                (sum, invoice) => sum + invoice.amount,
+                0
+            );
+
+            for (const invoice of paidInvoices) {
+                invoice.status = InvoiceStatus.REFUNDED;
+            }
+            await manager.save(paidInvoices);
+
+            const wallet = await this.lockWallet(manager, userId);
+            wallet.balance = Number(wallet.balance) + refundedAmount;
+            await manager.save(wallet);
+
+            // a cancelled booking no longer counts as occupying its shelves
+            booking.status = BookingStatus.CANCELLED;
+            await manager.save(booking);
+
+            return { booking, refundedAmount, balance: wallet.balance };
+        });
+    }
+
+    async getExtensionQuote(
+        bookingId: string,
+        userId: string,
+        newEndDate: string,
+        pricing: PricingConfig
+    ): Promise<ExtensionQuote> {
+        const { extraDays, amount } = await this.prepareExtension(
+            dataSource.manager,
+            bookingId,
+            userId,
+            newEndDate,
+            pricing,
+            false
+        );
+
+        return { extraDays, amount };
+    }
+
+    async extendBooking(
+        bookingId: string,
+        userId: string,
+        newEndDate: string,
+        pricing: PricingConfig
+    ): Promise<ExtendBookingResult> {
+        return await dataSource.transaction(async (manager) => {
+            const { booking, extraDays, amount } = await this.prepareExtension(
+                manager,
+                bookingId,
+                userId,
+                newEndDate,
+                pricing,
+                true
+            );
+
+            const wallet = await this.lockWallet(manager, userId);
+            const balance = Number(wallet.balance);
+
+            if (balance < amount) {
+                throw new AppError(
+                    402,
+                    'Payment failed: insufficient wallet balance.',
+                    'A fizetés sikertelen: nincs elegendő egyenleg a pénztárcában.'
+                );
+            }
+
+            wallet.balance = balance - amount;
+            await manager.save(wallet);
+
+            booking.endDate = newEndDate;
+            await manager.save(booking);
+
+            const invoice = await manager.save(
+                manager.create(Invoice, {
+                    bookingId: booking.id,
+                    userId,
+                    amount,
+                    status: InvoiceStatus.PAID,
+                })
+            );
+
+            return {
+                booking,
+                invoice,
+                extraDays,
+                amount,
+                balance: wallet.balance,
+            };
+        });
+    }
+
+    async getInboundBookings(): Promise<Booking[]> {
+        return await this.repo.find({
+            where: { status: BookingStatus.PENDING },
+            relations: {
+                user: true,
+                bookingShelfs: { shelf: { warehouse: true } },
+            },
+            order: { startDate: 'ASC' },
+        });
+    }
+
+    async storeBooking(bookingId: string): Promise<Booking> {
+        return await dataSource.transaction(async (manager) => {
+            const booking = await this.findBooking(
+                manager,
+                bookingId,
+                null,
+                true
+            );
+
+            if (booking.status !== BookingStatus.PENDING) {
+                throw new AppError(
+                    409,
+                    'Only bookings awaiting delivery can be stored.',
+                    'Csak beszállításra váró foglalás tárolható be.'
+                );
+            }
+
+            booking.status = BookingStatus.STORED;
+            await manager.save(booking);
+
+            // the goods are on the shelves now
+            await manager.query(
+                `UPDATE "shelfs" SET "status" = $2
+                 WHERE "status"::text = $3
+                   AND "id" IN (
+                       SELECT "shelfId" FROM "booking_shelfs"
+                       WHERE "bookingId" = $1
+                   )`,
+                [bookingId, ShelfStatus.ACTIVE, ShelfStatus.UNUSED]
+            );
+
+            return booking;
+        });
+    }
+
+    /** Loads a booking (of the given user, when set), optionally row-locked. */
+    private async findBooking(
+        manager: EntityManager,
+        bookingId: string,
+        userId: string | null,
+        lock: boolean
+    ): Promise<Booking> {
+        const query = manager
+            .createQueryBuilder(Booking, 'booking')
+            .where('booking.id = :bookingId', { bookingId });
+
+        if (userId) {
+            query.andWhere('booking.userId = :userId', { userId });
+        }
+        if (lock) {
+            query.setLock('pessimistic_write');
+        }
+
+        const booking = await query.getOne();
+
+        if (!booking) {
+            throw new AppError(
+                404,
+                'Booking not found.',
+                'A foglalás nem található.'
+            );
+        }
+
+        return booking;
+    }
+
+    private async lockWallet(
+        manager: EntityManager,
+        userId: string
+    ): Promise<Wallet> {
+        const wallet = await manager
+            .createQueryBuilder(Wallet, 'wallet')
+            .where('"wallet"."userId" = :userId', { userId })
+            .setLock('pessimistic_write')
+            .getOne();
+
+        if (!wallet) {
+            throw new AppError(
+                404,
+                'Wallet not found.',
+                'A pénztárca nem található.'
+            );
+        }
+
+        return wallet;
+    }
+
+    /**
+     * Validates an extension and prices the added days. The goods stay where
+     * they are, so every shelf of the booking must have room for its pallets
+     * in the whole added period.
+     */
+    private async prepareExtension(
+        manager: EntityManager,
+        bookingId: string,
+        userId: string,
+        newEndDate: string,
+        pricing: PricingConfig,
+        lock: boolean
+    ): Promise<PreparedExtension> {
+        const booking = await this.findBooking(
+            manager,
+            bookingId,
+            userId,
+            lock
+        );
+
+        if (!OCCUPYING_STATUSES.includes(booking.status)) {
+            throw new AppError(
+                409,
+                'Only active bookings can be extended.',
+                'Csak aktív foglalás hosszabbítható meg.'
+            );
+        }
+
+        const extraDays = countBookingDays(booking.endDate, newEndDate);
+
+        if (extraDays < 1) {
+            throw new AppError(
+                400,
+                'The new end date must be after the current end date.',
+                'Az új végdátumnak a jelenlegi végdátum után kell lennie.'
+            );
+        }
+
+        if (lock) {
+            await manager.query(
+                `SELECT s."id" FROM "shelfs" s
+                 WHERE s."id" IN (
+                     SELECT "shelfId" FROM "booking_shelfs"
+                     WHERE "bookingId" = $1
+                 )
+                 ORDER BY s."id"
+                 FOR UPDATE`,
+                [bookingId]
+            );
+        }
+
+        // free places on the booking's shelves between the old and new end
+        const shelves: ExtensionShelfRow[] = await manager.query(
+            `SELECT bs."shelfId" AS "shelfId",
+                    s."type" AS "type",
+                    bs."assignedPallets" AS "assignedPallets",
+                    (s."capacity" - COALESCE(
+                        SUM(obs."assignedPallets") FILTER (WHERE ob."id" IS NOT NULL),
+                        0
+                    ))::int AS "free"
+             FROM "booking_shelfs" bs
+             JOIN "shelfs" s ON s."id" = bs."shelfId"
+             LEFT JOIN "booking_shelfs" obs
+                    ON obs."shelfId" = s."id"
+                   AND obs."bookingId" <> bs."bookingId"
+             LEFT JOIN "bookings" ob
+                    ON ob."id" = obs."bookingId"
+                   AND ob."status"::text = ANY($4::text[])
+                   AND ob."startDate" < $3::date
+                   AND ob."endDate" > $2::date
+             WHERE bs."bookingId" = $1
+             GROUP BY bs."id", s."id"`,
+            [bookingId, booking.endDate, newEndDate, OCCUPYING_STATUSES]
+        );
+
+        if (
+            shelves.some(
+                (shelf) => Number(shelf.free) < Number(shelf.assignedPallets)
+            )
+        ) {
+            throw new AppError(
+                409,
+                'The shelves are already booked for the extension period.',
+                'A hosszabbítás időszakára a polcok már foglaltak.'
+            );
+        }
+
+        const amount = calculateInvoiceAmount(
+            extraDays,
+            shelves.map((shelf) => ({
+                type: shelf.type,
+                assignedPallets: Number(shelf.assignedPallets),
+            })),
+            pricing
+        );
+
+        return { booking, extraDays, amount };
     }
 
     private async queryAvailability(

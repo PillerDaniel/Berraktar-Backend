@@ -40,6 +40,9 @@ import { CreateShelfCommandHandler } from '../commands/shelf/CreateShelfCommandH
 import { EditShelfCommandHandler } from '../commands/shelf/EditShelfCommandHandler.js';
 
 import { CreateBookingCommandHandler } from '../commands/booking/CreateBookingCommandHandler.js';
+import { CancelBookingCommandHandler } from '../commands/booking/CancelBookingCommandHandler.js';
+import { ExtendBookingCommandHandler } from '../commands/booking/ExtendBookingCommandHandler.js';
+import { StoreBookingCommandHandler } from '../commands/booking/StoreBookingCommandHandler.js';
 import { DepositToWalletCommandHandler } from '../commands/wallet/DepositToWalletCommandHandler.js';
 
 //query handlers
@@ -54,6 +57,8 @@ import { GetShelfByIdQueryHandler } from '../queries/shelf/GetShelfByIdQueryHand
 
 import { GetBookingQuoteQueryHandler } from '../queries/booking/GetBookingQuoteQueryHandler.js';
 import { GetUserBookingsQueryHandler } from '../queries/booking/GetUserBookingsQueryHandler.js';
+import { GetExtensionQuoteQueryHandler } from '../queries/booking/GetExtensionQuoteQueryHandler.js';
+import { GetInboundBookingsQueryHandler } from '../queries/booking/GetInboundBookingsQueryHandler.js';
 import { GetWalletQueryHandler } from '../queries/wallet/GetWalletQueryHandler.js';
 //IServices
 
@@ -96,6 +101,12 @@ export class DiContainer {
         null;
     private _depositToWalletCommandHandler: DepositToWalletCommandHandler | null =
         null;
+    private _cancelBookingCommandHandler: CancelBookingCommandHandler | null =
+        null;
+    private _extendBookingCommandHandler: ExtendBookingCommandHandler | null =
+        null;
+    private _storeBookingCommandHandler: StoreBookingCommandHandler | null =
+        null;
 
     //query handlers
     private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
@@ -113,6 +124,10 @@ export class DiContainer {
     private _getUserBookingsQueryHandler: GetUserBookingsQueryHandler | null =
         null;
     private _getWalletQueryHandler: GetWalletQueryHandler | null = null;
+    private _getExtensionQuoteQueryHandler: GetExtensionQuoteQueryHandler | null =
+        null;
+    private _getInboundBookingsQueryHandler: GetInboundBookingsQueryHandler | null =
+        null;
 
     private constructor() {}
 
@@ -316,6 +331,34 @@ export class DiContainer {
         return this._depositToWalletCommandHandler;
     }
 
+    public get CancelBookingCommandHandler(): CancelBookingCommandHandler {
+        if (!this._cancelBookingCommandHandler) {
+            this._cancelBookingCommandHandler = new CancelBookingCommandHandler(
+                this.bookingRepository
+            );
+        }
+        return this._cancelBookingCommandHandler;
+    }
+
+    public get ExtendBookingCommandHandler(): ExtendBookingCommandHandler {
+        if (!this._extendBookingCommandHandler) {
+            this._extendBookingCommandHandler = new ExtendBookingCommandHandler(
+                this.bookingRepository,
+                this.configRepository
+            );
+        }
+        return this._extendBookingCommandHandler;
+    }
+
+    public get StoreBookingCommandHandler(): StoreBookingCommandHandler {
+        if (!this._storeBookingCommandHandler) {
+            this._storeBookingCommandHandler = new StoreBookingCommandHandler(
+                this.bookingRepository
+            );
+        }
+        return this._storeBookingCommandHandler;
+    }
+
     //query handlers
     public get GetUserProfileQueryHandler(): GetUserProfileQueryHandler {
         if (!this._getUserProfileQueryHandler) {
@@ -385,6 +428,25 @@ export class DiContainer {
             );
         }
         return this._getWalletQueryHandler;
+    }
+
+    public get GetExtensionQuoteQueryHandler(): GetExtensionQuoteQueryHandler {
+        if (!this._getExtensionQuoteQueryHandler) {
+            this._getExtensionQuoteQueryHandler =
+                new GetExtensionQuoteQueryHandler(
+                    this.bookingRepository,
+                    this.configRepository
+                );
+        }
+        return this._getExtensionQuoteQueryHandler;
+    }
+
+    public get GetInboundBookingsQueryHandler(): GetInboundBookingsQueryHandler {
+        if (!this._getInboundBookingsQueryHandler) {
+            this._getInboundBookingsQueryHandler =
+                new GetInboundBookingsQueryHandler(this.bookingRepository);
+        }
+        return this._getInboundBookingsQueryHandler;
     }
 }
 
