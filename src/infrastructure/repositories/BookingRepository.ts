@@ -182,13 +182,20 @@ export default class BookingRepository implements IBookingRepository {
                 true
             );
 
-            const wasStored = booking.status === BookingStatus.STORED;
-
-            if (booking.status !== BookingStatus.PENDING && !wasStored) {
+            // once the goods are on the shelves the booking stays
+            if (booking.status === BookingStatus.STORED) {
                 throw new AppError(
                     409,
-                    'Only active bookings can be cancelled.',
-                    'Csak aktív foglalás mondható le.'
+                    'A stored booking cannot be cancelled.',
+                    'Betárolt foglalás nem mondható le.'
+                );
+            }
+
+            if (booking.status !== BookingStatus.PENDING) {
+                throw new AppError(
+                    409,
+                    'Only bookings awaiting delivery can be cancelled.',
+                    'Csak beszállításra váró foglalás mondható le.'
                 );
             }
 
@@ -221,30 +228,6 @@ export default class BookingRepository implements IBookingRepository {
             // a cancelled booking no longer counts as occupying its shelves
             booking.status = BookingStatus.CANCELLED;
             await manager.save(booking);
-
-            if (wasStored) {
-                // free the shelves no other stored booking keeps in use
-                await manager.query(
-                    `UPDATE "shelfs" SET "status" = $2
-                     WHERE "status"::text = $3
-                       AND "id" IN (
-                           SELECT "shelfId" FROM "booking_shelfs"
-                           WHERE "bookingId" = $1
-                       )
-                       AND NOT EXISTS (
-                           SELECT 1 FROM "booking_shelfs" bs
-                           JOIN "bookings" b ON b."id" = bs."bookingId"
-                           WHERE bs."shelfId" = "shelfs"."id"
-                             AND b."status"::text = $4
-                       )`,
-                    [
-                        bookingId,
-                        ShelfStatus.UNUSED,
-                        ShelfStatus.ACTIVE,
-                        BookingStatus.STORED,
-                    ]
-                );
-            }
 
             return { booking, refundedAmount, balance: wallet.balance };
         });
