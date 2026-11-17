@@ -1,4 +1,4 @@
-import type { EntityManager } from 'typeorm';
+import { In, type EntityManager } from 'typeorm';
 
 import type {
     AvailabilityFilter,
@@ -306,7 +306,8 @@ export default class BookingRepository implements IBookingRepository {
 
     async getInboundBookings(): Promise<Booking[]> {
         return await this.repo.find({
-            where: { status: BookingStatus.PENDING },
+            // pending: waiting for the goods, stored: already on the shelves
+            where: { status: In([BookingStatus.PENDING, BookingStatus.STORED]) },
             relations: {
                 user: true,
                 bookingShelfs: { shelf: { warehouse: true } },

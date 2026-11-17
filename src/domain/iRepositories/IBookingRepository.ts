@@ -89,7 +89,10 @@ export interface IBookingRepository {
         newEndDate: string,
         pricing: PricingConfig
     ): Promise<ExtendBookingResult>;
-    /** Bookings waiting for delivery, with tenant, warehouse and shelves. */
+    /**
+     * Bookings waiting for delivery and those already stored, with tenant,
+     * warehouse and shelves.
+     */
     getInboundBookings(): Promise<Booking[]>;
     /**
      * Marks a booking waiting for delivery as stored and its shelves as in
