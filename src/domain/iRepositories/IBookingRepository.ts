@@ -45,6 +45,19 @@ export interface ExtendBookingResult extends ExtensionQuote {
     balance: number;
 }
 
+export interface ReleaseBookingResult {
+    booking: Booking;
+    overdueDays: number;
+    overstayFee: number;
+    // the paid overstay invoice, null when the goods left in time
+    invoice: Invoice | null;
+}
+
+export interface RelocateBookingResult {
+    booking: Booking;
+    warehouse: WarehouseSummary;
+}
+
 export interface IBookingRepository {
     getShelfAvailability(
         filter: AvailabilityFilter
@@ -99,4 +112,26 @@ export interface IBookingRepository {
      * use. Throws an AppError when it is missing (404) or not pending (409).
      */
     storeBooking(bookingId: string): Promise<Booking>;
+    /** Stored bookings (goods on the shelves), with tenant and shelves. */
+    getOutboundBookings(): Promise<Booking[]>;
+    /**
+     * Takes the goods of a stored booking out and closes it: charges the
+     * overstay fee to the tenant's wallet when the end date has passed and
+     * frees the shelves. Throws an AppError when the booking is missing
+     * (404), not stored (409) or the wallet does not cover the fee (402).
+     */
+    releaseBooking(
+        bookingId: string,
+        pricing: PricingConfig
+    ): Promise<ReleaseBookingResult>;
+    /**
+     * Moves every pallet of a pending or stored booking to shelves of the
+     * same type in another warehouse (an active one or the overstay
+     * warehouse). Throws an AppError when the booking or warehouse is missing
+     * (404), the move is not allowed (400/409) or there is no room (409).
+     */
+    relocateBooking(
+        bookingId: string,
+        warehouseId: string
+    ): Promise<RelocateBookingResult>;
 }

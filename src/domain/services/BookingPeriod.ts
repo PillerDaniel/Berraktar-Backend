@@ -13,6 +13,22 @@ export const countBookingDays = (startDate: string, endDate: string): number =>
             MS_PER_DAY
     );
 
+/** The day after a 'YYYY-MM-DD' date. */
+export const nextIsoDate = (isoDate: string): string => {
+    const date = toUtcDate(isoDate);
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+};
+
+/**
+ * Days the goods stayed after the end date. Leaving on the end date itself
+ * costs nothing, every later day is overdue.
+ */
+export const countOverdueDays = (
+    endDate: string,
+    today: string = todayIsoDate()
+): number => Math.max(0, countBookingDays(endDate, today));
+
 export const assertValidBookingPeriod = (
     startDate: string,
     endDate: string

@@ -43,6 +43,10 @@ export default class Booking {
     })
     status!: BookingStatus;
 
+    // set when the goods leave the warehouse and the booking is closed
+    @Column({ type: 'timestamp', nullable: true })
+    releasedAt!: Date | null;
+
     @OneToMany(() => BookingShelf, (bookingShelf) => bookingShelf.booking)
     bookingShelfs!: Relation<BookingShelf[]>;
 

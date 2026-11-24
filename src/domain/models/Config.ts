@@ -22,4 +22,13 @@ export default class Config {
         default: 0,
     })
     refrigeratedMultiplier!: number;
+
+    // the daily price of the days after the end date is multiplied by this
+    @Column({
+        type: 'decimal',
+        precision: 18,
+        scale: 2,
+        default: 1.5,
+    })
+    overstayMultiplier!: number;
 }

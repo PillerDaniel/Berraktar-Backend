@@ -18,6 +18,15 @@ export class EditWareHouseCommandHandler {
             );
         }
 
+        // tenants must never be able to book into the overstay warehouse
+        if (warehouse.overstay && command.active) {
+            throw new AppError(
+                400,
+                'The overstay warehouse cannot be opened for bookings.',
+                'A túltárolási raktár nem nyitható meg foglalásra.'
+            );
+        }
+
         warehouse.country = command.country;
         warehouse.city = command.city;
         warehouse.address = command.address;

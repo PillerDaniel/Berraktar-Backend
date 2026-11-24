@@ -8,6 +8,8 @@ import type {
     ExtensionQuote,
     IBookingRepository,
     PaidBookingResult,
+    ReleaseBookingResult,
+    RelocateBookingResult,
 } from '../../domain/iRepositories/IBookingRepository.js';
 import type { ShelfType } from '../../domain/enums/ShelfType.js';
 import { BookingStatus } from '../../domain/enums/BookingStatus.js';
@@ -18,11 +20,17 @@ import Booking from '../../domain/models/Booking.js';
 import BookingShelf from '../../domain/models/BookingShelf.js';
 import Invoice from '../../domain/models/Invoice.js';
 import Wallet from '../../domain/models/Wallet.js';
+import WareHouse from '../../domain/models/WareHouse.js';
 import {
     countBookingDays,
+    countOverdueDays,
+    nextIsoDate,
     todayIsoDate,
 } from '../../domain/services/BookingPeriod.js';
-import { calculateInvoiceAmount } from '../../domain/services/InvoiceCalculator.js';
+import {
+    calculateInvoiceAmount,
+    calculateOverstayFee,
+} from '../../domain/services/InvoiceCalculator.js';
 import type { PricingConfig } from '../../domain/services/InvoiceCalculator.js';
 import { allocatePallets } from '../../domain/services/ShelfAllocator.js';
 import type { ShelfAvailability } from '../../domain/services/ShelfAllocator.js';
@@ -351,6 +359,256 @@ export default class BookingRepository implements IBookingRepository {
         });
     }
 
+    async getOutboundBookings(): Promise<Booking[]> {
+        return await this.repo.find({
+            where: { status: BookingStatus.STORED },
+            relations: {
+                user: true,
+                bookingShelfs: { shelf: { warehouse: true } },
+            },
+            // the most overdue goods come first
+            order: { endDate: 'ASC' },
+        });
+    }
+
+    async releaseBooking(
+        bookingId: string,
+        pricing: PricingConfig
+    ): Promise<ReleaseBookingResult> {
+        return await dataSource.transaction(async (manager) => {
+            const booking = await this.findBooking(
+                manager,
+                bookingId,
+                null,
+                true
+            );
+
+            if (booking.status !== BookingStatus.STORED) {
+                throw new AppError(
+                    409,
+                    'Only stored goods can be taken out.',
+                    'Csak betárolt áru tárolható ki.'
+                );
+            }
+
+            const bookingShelfs = await manager.find(BookingShelf, {
+                where: { bookingId },
+                relations: { shelf: true },
+            });
+
+            const overdueDays = countOverdueDays(booking.endDate);
+            const overstayFee = calculateOverstayFee(
+                overdueDays,
+                bookingShelfs.map((bookingShelf) => ({
+                    type: bookingShelf.shelf.type,
+                    assignedPallets: bookingShelf.assignedPallets,
+                })),
+                pricing
+            );
+
+            let invoice: Invoice | null = null;
+
+            if (overstayFee > 0) {
+                const wallet = await this.lockWallet(manager, booking.userId);
+                const balance = Number(wallet.balance);
+
+                // the goods stay until the fee is covered
+                if (balance < overstayFee) {
+                    throw new AppError(
+                        402,
+                        `The tenant's balance does not cover the overstay fee (${overstayFee.toLocaleString('en-GB')} HUF).`,
+                        `A bérlő egyenlege nem fedezi a túltárolási díjat (${overstayFee.toLocaleString('hu-HU')} Ft).`
+                    );
+                }
+
+                wallet.balance = balance - overstayFee;
+                await manager.save(wallet);
+
+                invoice = await manager.save(
+                    manager.create(Invoice, {
+                        bookingId: booking.id,
+                        userId: booking.userId,
+                        amount: overstayFee,
+                        status: InvoiceStatus.PAID,
+                        overstay: true,
+                    })
+                );
+            }
+
+            booking.status = BookingStatus.CLOSED;
+            booking.releasedAt = new Date();
+            await manager.save(booking);
+
+            await this.releaseShelves(
+                manager,
+                bookingShelfs.map((bookingShelf) => bookingShelf.shelfId),
+                booking.id
+            );
+
+            return { booking, overdueDays, overstayFee, invoice };
+        });
+    }
+
+    async relocateBooking(
+        bookingId: string,
+        warehouseId: string
+    ): Promise<RelocateBookingResult> {
+        return await dataSource.transaction(async (manager) => {
+            const booking = await this.findBooking(
+                manager,
+                bookingId,
+                null,
+                true
+            );
+
+            if (!OCCUPYING_STATUSES.includes(booking.status)) {
+                throw new AppError(
+                    409,
+                    'Only active bookings can be relocated.',
+                    'Csak aktív foglalás helyezhető át.'
+                );
+            }
+
+            const current = await manager.find(BookingShelf, {
+                where: { bookingId },
+                relations: { shelf: true },
+            });
+            const first = current[0];
+
+            if (!first) {
+                throw new AppError(
+                    409,
+                    'The booking has no shelves assigned.',
+                    'A foglaláshoz nincs polc rendelve.'
+                );
+            }
+
+            if (first.shelf.warehouseId === warehouseId) {
+                throw new AppError(
+                    400,
+                    'The goods are already in this warehouse.',
+                    'Az áru már ebben a raktárban van.'
+                );
+            }
+
+            const warehouse = await manager.findOneBy(WareHouse, {
+                id: warehouseId,
+            });
+
+            if (!warehouse) {
+                throw new AppError(
+                    404,
+                    'Warehouse not found.',
+                    'A raktár nem található.'
+                );
+            }
+
+            if (!warehouse.active && !warehouse.overstay) {
+                throw new AppError(
+                    409,
+                    'Goods can only be moved to an active warehouse or the overstay warehouse.',
+                    'Áru csak aktív raktárba vagy a túltárolási raktárba helyezhető át.'
+                );
+            }
+
+            const type = first.shelf.type;
+
+            await manager.query(
+                `SELECT s."id" FROM "shelfs" s
+                 WHERE s."warehouseId" = $1 AND s."type"::text = $2
+                 ORDER BY s."id"
+                 FOR UPDATE`,
+                [warehouseId, type]
+            );
+
+            // the goods need room from now (or their start) until they leave;
+            // overdue goods have no end, the availability query keeps them
+            const today = todayIsoDate();
+            const startDate =
+                booking.startDate > today ? booking.startDate : today;
+            const endDate =
+                booking.endDate > startDate
+                    ? booking.endDate
+                    : nextIsoDate(startDate);
+
+            const shelves = await this.queryAvailability(
+                manager,
+                { startDate, endDate, type, warehouseId },
+                false
+            );
+            const allocation = allocatePallets(shelves, booking.totalPallets);
+
+            if (!allocation) {
+                throw new AppError(
+                    409,
+                    'There is not enough free space for the goods in the selected warehouse.',
+                    'A kiválasztott raktárban nincs elég szabad hely az árunak.'
+                );
+            }
+
+            await manager.delete(BookingShelf, { bookingId });
+            await manager.save(
+                allocation.shelves.map((shelf) =>
+                    manager.create(BookingShelf, {
+                        bookingId,
+                        shelfId: shelf.shelfId,
+                        assignedPallets: shelf.assignedPallets,
+                    })
+                )
+            );
+
+            // stored goods leave their old shelves and occupy the new ones
+            if (booking.status === BookingStatus.STORED) {
+                await this.releaseShelves(
+                    manager,
+                    current.map((bookingShelf) => bookingShelf.shelfId),
+                    bookingId
+                );
+                await manager.query(
+                    `UPDATE "shelfs" SET "status" = $2
+                     WHERE "id" = ANY($1::uuid[]) AND "status"::text = $3`,
+                    [
+                        allocation.shelves.map((shelf) => shelf.shelfId),
+                        ShelfStatus.ACTIVE,
+                        ShelfStatus.UNUSED,
+                    ]
+                );
+            }
+
+            return { booking, warehouse: allocation.warehouse };
+        });
+    }
+
+    /**
+     * Marks the shelves as unused again, except the ones still holding the
+     * goods of another stored booking.
+     */
+    private async releaseShelves(
+        manager: EntityManager,
+        shelfIds: string[],
+        bookingId: string
+    ): Promise<void> {
+        await manager.query(
+            `UPDATE "shelfs" s SET "status" = $2
+             WHERE s."id" = ANY($1::uuid[])
+               AND s."status"::text = $3
+               AND NOT EXISTS (
+                   SELECT 1 FROM "booking_shelfs" obs
+                   JOIN "bookings" ob ON ob."id" = obs."bookingId"
+                   WHERE obs."shelfId" = s."id"
+                     AND ob."id" <> $4
+                     AND ob."status"::text = $5
+               )`,
+            [
+                shelfIds,
+                ShelfStatus.UNUSED,
+                ShelfStatus.ACTIVE,
+                bookingId,
+                BookingStatus.STORED,
+            ]
+        );
+    }
+
     /** Loads a booking (of the given user, when set), optionally row-locked. */
     private async findBooking(
         manager: EntityManager,
@@ -559,10 +817,13 @@ export default class BookingRepository implements IBookingRepository {
 
     private async queryAvailability(
         manager: EntityManager,
-        filter: AvailabilityFilter
+        filter: AvailabilityFilter,
+        onlyActiveWarehouses = true
     ): Promise<ShelfAvailability[]> {
         // Two periods overlap when each one starts before the other ends; the
-        // end date itself is free again (goods leave that day).
+        // end date itself is free again (goods leave that day). Stored goods
+        // past their end date are still on the shelf, so they block it until
+        // they are taken out or moved.
         const rows: AvailabilityRow[] = await manager.query(
             `SELECT s."id" AS "shelfId",
                     s."type" AS "type",
@@ -582,8 +843,11 @@ export default class BookingRepository implements IBookingRepository {
                     ON b."id" = bs."bookingId"
                    AND b."status"::text = ANY($5::text[])
                    AND b."startDate" < $2::date
-                   AND b."endDate" > $1::date
-             WHERE w."active" = true
+                   AND (
+                       b."endDate" > $1::date
+                       OR (b."status"::text = $7 AND b."endDate" < $8::date)
+                   )
+             WHERE ($9::boolean = false OR w."active" = true)
                AND s."status"::text <> $6
                AND s."type"::text = $3
                AND ($4::uuid IS NULL OR w."id" = $4::uuid)
@@ -596,6 +860,9 @@ export default class BookingRepository implements IBookingRepository {
                 filter.warehouseId,
                 OCCUPYING_STATUSES,
                 ShelfStatus.INACTIVE,
+                BookingStatus.STORED,
+                todayIsoDate(),
+                onlyActiveWarehouses,
             ]
         );
 

@@ -43,6 +43,8 @@ import { CreateBookingCommandHandler } from '../commands/booking/CreateBookingCo
 import { CancelBookingCommandHandler } from '../commands/booking/CancelBookingCommandHandler.js';
 import { ExtendBookingCommandHandler } from '../commands/booking/ExtendBookingCommandHandler.js';
 import { StoreBookingCommandHandler } from '../commands/booking/StoreBookingCommandHandler.js';
+import { ReleaseBookingCommandHandler } from '../commands/booking/ReleaseBookingCommandHandler.js';
+import { RelocateBookingCommandHandler } from '../commands/booking/RelocateBookingCommandHandler.js';
 import { DepositToWalletCommandHandler } from '../commands/wallet/DepositToWalletCommandHandler.js';
 
 //query handlers
@@ -59,6 +61,7 @@ import { GetBookingQuoteQueryHandler } from '../queries/booking/GetBookingQuoteQ
 import { GetUserBookingsQueryHandler } from '../queries/booking/GetUserBookingsQueryHandler.js';
 import { GetExtensionQuoteQueryHandler } from '../queries/booking/GetExtensionQuoteQueryHandler.js';
 import { GetInboundBookingsQueryHandler } from '../queries/booking/GetInboundBookingsQueryHandler.js';
+import { GetOutboundBookingsQueryHandler } from '../queries/booking/GetOutboundBookingsQueryHandler.js';
 import { GetWalletQueryHandler } from '../queries/wallet/GetWalletQueryHandler.js';
 //IServices
 
@@ -107,6 +110,10 @@ export class DiContainer {
         null;
     private _storeBookingCommandHandler: StoreBookingCommandHandler | null =
         null;
+    private _releaseBookingCommandHandler: ReleaseBookingCommandHandler | null =
+        null;
+    private _relocateBookingCommandHandler: RelocateBookingCommandHandler | null =
+        null;
 
     //query handlers
     private _getUserProfileQueryHandler: GetUserProfileQueryHandler | null =
@@ -127,6 +134,8 @@ export class DiContainer {
     private _getExtensionQuoteQueryHandler: GetExtensionQuoteQueryHandler | null =
         null;
     private _getInboundBookingsQueryHandler: GetInboundBookingsQueryHandler | null =
+        null;
+    private _getOutboundBookingsQueryHandler: GetOutboundBookingsQueryHandler | null =
         null;
 
     private constructor() {}
@@ -359,6 +368,25 @@ export class DiContainer {
         return this._storeBookingCommandHandler;
     }
 
+    public get ReleaseBookingCommandHandler(): ReleaseBookingCommandHandler {
+        if (!this._releaseBookingCommandHandler) {
+            this._releaseBookingCommandHandler =
+                new ReleaseBookingCommandHandler(
+                    this.bookingRepository,
+                    this.configRepository
+                );
+        }
+        return this._releaseBookingCommandHandler;
+    }
+
+    public get RelocateBookingCommandHandler(): RelocateBookingCommandHandler {
+        if (!this._relocateBookingCommandHandler) {
+            this._relocateBookingCommandHandler =
+                new RelocateBookingCommandHandler(this.bookingRepository);
+        }
+        return this._relocateBookingCommandHandler;
+    }
+
     //query handlers
     public get GetUserProfileQueryHandler(): GetUserProfileQueryHandler {
         if (!this._getUserProfileQueryHandler) {
@@ -447,6 +475,17 @@ export class DiContainer {
                 new GetInboundBookingsQueryHandler(this.bookingRepository);
         }
         return this._getInboundBookingsQueryHandler;
+    }
+
+    public get GetOutboundBookingsQueryHandler(): GetOutboundBookingsQueryHandler {
+        if (!this._getOutboundBookingsQueryHandler) {
+            this._getOutboundBookingsQueryHandler =
+                new GetOutboundBookingsQueryHandler(
+                    this.bookingRepository,
+                    this.configRepository
+                );
+        }
+        return this._getOutboundBookingsQueryHandler;
     }
 }
 

@@ -37,6 +37,10 @@ export default class WareHouse {
     @Column({ type: 'boolean', default: true })
     active!: boolean;
 
+    // holds goods left after their end date; it can never be booked
+    @Column({ type: 'boolean', default: false })
+    overstay!: boolean;
+
     @OneToMany(() => Shelf, (shelf) => shelf.warehouse)
     shelfs!: Relation<Shelf[]>;
 }

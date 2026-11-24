@@ -54,18 +54,28 @@ export class AdminController {
 
     async updateConfig(req: Request, res: Response): Promise<void | Response> {
         try {
-            const { unitPrice, refrigeratedMultiplier } = req.body;
+            const { unitPrice, refrigeratedMultiplier, overstayMultiplier } =
+                req.body;
 
-            if (!unitPrice || !refrigeratedMultiplier) {
+            if (!unitPrice || !refrigeratedMultiplier || !overstayMultiplier) {
                 return res.status(400).json({
-                    messageHu: 'Az egységár, és szorzó megadása kötelező.',
-                    messageEn: 'Unit price and multiplier are required.',
+                    messageHu: 'Az egységár és a szorzók megadása kötelező.',
+                    messageEn: 'Unit price and multipliers are required.',
+                });
+            }
+
+            // overstaying must not be cheaper than a normal day
+            if (!(Number(overstayMultiplier) >= 1)) {
+                return res.status(400).json({
+                    messageHu: 'A túltárolási szorzó legalább 1 kell legyen.',
+                    messageEn: 'The overstay multiplier must be at least 1.',
                 });
             }
 
             const conf = new Config();
             conf.unitPrice = unitPrice;
             conf.refrigeratedMultiplier = refrigeratedMultiplier;
+            conf.overstayMultiplier = Number(overstayMultiplier);
 
             const command = new EditConfigCommand(conf);
             const updatedConfig =

@@ -44,6 +44,10 @@ export default class Invoice {
     })
     status!: InvoiceStatus;
 
+    // a fee for the days the goods stayed after the end date
+    @Column({ type: 'boolean', default: false })
+    overstay!: boolean;
+
     @CreateDateColumn()
     issuedAt!: Date;
 }

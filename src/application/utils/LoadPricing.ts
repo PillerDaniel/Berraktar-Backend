@@ -11,6 +11,7 @@ const loadPricing = async (
         return {
             unitPrice: Number(config.unitPrice),
             refrigeratedMultiplier: Number(config.refrigeratedMultiplier),
+            overstayMultiplier: Number(config.overstayMultiplier),
         };
     } catch {
         throw new AppError(

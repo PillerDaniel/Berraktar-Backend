@@ -19,7 +19,10 @@ const bookingController: BookingController = new BookingController(
     container.GetExtensionQuoteQueryHandler,
     container.ExtendBookingCommandHandler,
     container.GetInboundBookingsQueryHandler,
-    container.StoreBookingCommandHandler
+    container.StoreBookingCommandHandler,
+    container.GetOutboundBookingsQueryHandler,
+    container.ReleaseBookingCommandHandler,
+    container.RelocateBookingCommandHandler
 );
 
 const router = express.Router();
@@ -134,6 +137,57 @@ router.post(
         }
 
         return bookingController.storeBooking(req, res);
+    }
+);
+
+// stored goods that can be taken out, with the overstay fee due today
+router.get(
+    '/outbound',
+    authMiddleware,
+    roleMiddleware(warehouseRoles),
+    async (req: Request, res: Response) => {
+        return bookingController.getOutboundBookings(req, res);
+    }
+);
+
+router.post(
+    '/:id/release',
+    authMiddleware,
+    roleMiddleware(warehouseRoles),
+    bookingIdValidator,
+    async (req: Request, res: Response) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                errors: errors.array(),
+            });
+        }
+
+        return bookingController.releaseBooking(req, res);
+    }
+);
+
+// the admin moves every pallet of a booking to another warehouse
+router.post(
+    '/:id/relocate',
+    authMiddleware,
+    roleMiddleware(['admin']),
+    [
+        bookingIdValidator,
+        body('warehouseId').isUUID().withMessage({
+            messageHu: 'Érvénytelen raktár azonosító.',
+            messageEn: 'Invalid warehouse ID.',
+        }),
+    ],
+    async (req: Request, res: Response) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                errors: errors.array(),
+            });
+        }
+
+        return bookingController.relocateBooking(req, res);
     }
 );
 

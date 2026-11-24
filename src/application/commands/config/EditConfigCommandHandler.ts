@@ -9,6 +9,7 @@ export class EditConfigCommandHandler {
         config.unitPrice = command.newConfig.unitPrice;
         config.refrigeratedMultiplier =
             command.newConfig.refrigeratedMultiplier;
+        config.overstayMultiplier = command.newConfig.overstayMultiplier;
         return await this.configRepository.editConfig(config);
     }
 }
