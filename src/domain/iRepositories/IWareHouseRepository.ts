@@ -8,11 +8,4 @@ export interface IWareHouseRepository {
         warehouseId: string,
         warehouse: Partial<WareHouse>
     ): Promise<WareHouse | null>;
-    CheckAvailability(
-        warehouseId: string,
-        startDate: Date,
-        endDate: Date,
-        type: 'none' | 'refrigerated',
-        palletCount: number
-    ): Promise<boolean>;
 }

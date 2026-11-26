@@ -1,46 +1,40 @@
-import type { IWareHouseRepository } from '../../../domain/iRepositories/IWareHouseRepository.js';
+import type { IBookingRepository } from '../../../domain/iRepositories/IBookingRepository.js';
+import { assertValidBookingPeriod } from '../../../domain/services/BookingPeriod.js';
+import { allocatePallets } from '../../../domain/services/ShelfAllocator.js';
 import CheckAvailabilityQuery from './CheckAvailabilityQuery.js';
-import { AppError } from '../../../domain/errors/AppError.js';
 
+export interface AvailabilityResult {
+    available: boolean;
+    // free pallet places in the warehouse for the whole period
+    freePallets: number;
+}
+
+/**
+ * Answers "would this booking fit into this warehouse?" with exactly the
+ * logic a booking uses: same period rules, same free-place query and the
+ * same shelf allocation.
+ */
 export default class CheckAvailabilityQueryHandler {
-    constructor(private readonly warehouseRepository: IWareHouseRepository) {}
+    constructor(private readonly bookingRepository: IBookingRepository) {}
 
-    async handle(query: CheckAvailabilityQuery): Promise<boolean> {
-        const { warehouseId, startDate, endDate, type, palletCount } = query;
+    async handle(query: CheckAvailabilityQuery): Promise<AvailabilityResult> {
+        assertValidBookingPeriod(query.startDate, query.endDate);
 
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+        const shelves = await this.bookingRepository.getShelfAvailability({
+            startDate: query.startDate,
+            endDate: query.endDate,
+            type: query.type,
+            warehouseId: query.warehouseId,
+        });
 
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            throw new AppError(
-                400,
-                'Hibás dátum formátum!',
-                'Wrong date format!'
-            );
-        }
-
-        if (start >= end) {
-            throw new AppError(
-                400,
-                'A kezdő dátumnak korábbinak kell lennie a végdátumnál!',
-                'Start date must be before end date!'
-            );
-        }
-
-        if (!Number.isInteger(palletCount) || palletCount <= 0) {
-            throw new AppError(
-                400,
-                'A raklapok számának legalább 1 egész számnak kell lennie!',
-                'Pallet count must be at least 1!'
-            );
-        }
-
-        return await this.warehouseRepository.CheckAvailability(
-            warehouseId,
-            start,
-            end,
-            type,
-            palletCount
+        const freePallets = shelves.reduce(
+            (sum, shelf) => sum + Math.max(0, shelf.free),
+            0
         );
+
+        return {
+            available: allocatePallets(shelves, query.palletCount) !== null,
+            freePallets,
+        };
     }
 }

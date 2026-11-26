@@ -116,41 +116,35 @@ export class WareHouseController {
         res: Response
     ): Promise<void | Response> {
         try {
+            // the input is validated in the router, like a booking's
             const { id, startDate, endDate, type, palletCount } = req.body;
-
-            if (!id || !startDate || !endDate || palletCount === undefined) {
-                throw new AppError(
-                    400,
-                    'Minden mező megadása kötelező!',
-                    'All fields are required!'
-                );
-            }
 
             const query = new CheckAvailabilityQuery(
                 id,
-                new Date(startDate),
-                new Date(endDate),
-                type === 'refrigerated' ? 'refrigerated' : 'none',
+                startDate,
+                endDate,
+                type ?? ShelfType.NONE,
                 Number(palletCount)
             );
 
-            const isAvailable =
+            const { available, freePallets } =
                 await this.checkAvailabilityQueryHandler.handle(query);
 
             return res.status(200).json({
-                available: isAvailable,
+                available,
+                freePallets,
             });
-        } catch (error: any) {
-            const statusCode = error.statusCode || 400;
-            return res.status(statusCode).json({
-                messageHu:
-                    error.messageHu ||
-                    error.message ||
-                    'Hiba a foglalhatóság ellenőrzésekor!',
-                messageEn:
-                    error.messageEn ||
-                    error.message ||
-                    'Failed to check warehouse availability!',
+        } catch (error) {
+            if (error instanceof AppError) {
+                return res.status(error.statusCode).json({
+                    messageHu: error.messageHu,
+                    messageEn: error.messageEn,
+                });
+            }
+
+            return res.status(500).json({
+                messageHu: 'Hiba a foglalhatóság ellenőrzésekor!',
+                messageEn: 'Failed to check warehouse availability!',
             });
         }
     }

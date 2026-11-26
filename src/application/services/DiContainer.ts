@@ -495,7 +495,7 @@ export class DiContainer {
     public get CheckAvailabilityQueryHandler(): CheckAvailabilityQueryHandler {
         if (!this._checkAvailabilityQueryHandler) {
             this._checkAvailabilityQueryHandler =
-                new CheckAvailabilityQueryHandler(this.wareHouseRepository);
+                new CheckAvailabilityQueryHandler(this.bookingRepository);
         }
         return this._checkAvailabilityQueryHandler;
     }
