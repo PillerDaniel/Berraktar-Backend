@@ -3,7 +3,7 @@ import {
     Entity,
     JoinColumn,
     ManyToOne,
-    OneToOne,
+    OneToMany,
     PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -11,6 +11,7 @@ import type { Relation } from 'typeorm';
 import { ShelfType } from '../enums/ShelfType.js';
 import { ShelfStatus } from '../enums/ShelfStatus.js';
 import WareHouse from './WareHouse.js';
+import BookingShelf from './BookingShelf.js';
 
 @Entity('shelfs')
 export default class Shelf {
@@ -42,4 +43,7 @@ export default class Shelf {
     })
     @JoinColumn({ name: 'warehouseId' })
     warehouse!: Relation<WareHouse>;
+
+    @OneToMany(() => BookingShelf, (bookingShelf) => bookingShelf.shelf)
+    bookingShelfs!: Relation<BookingShelf[]>;
 }

@@ -63,6 +63,9 @@ import { GetExtensionQuoteQueryHandler } from '../queries/booking/GetExtensionQu
 import { GetInboundBookingsQueryHandler } from '../queries/booking/GetInboundBookingsQueryHandler.js';
 import { GetOutboundBookingsQueryHandler } from '../queries/booking/GetOutboundBookingsQueryHandler.js';
 import { GetWalletQueryHandler } from '../queries/wallet/GetWalletQueryHandler.js';
+
+import CheckAvailabilityQueryHandler from '../queries/booking/CheckAvailabilityQueryHandler.js';
+
 //IServices
 
 //Services
@@ -136,6 +139,8 @@ export class DiContainer {
     private _getInboundBookingsQueryHandler: GetInboundBookingsQueryHandler | null =
         null;
     private _getOutboundBookingsQueryHandler: GetOutboundBookingsQueryHandler | null =
+        null;
+    private _checkAvailabilityQueryHandler: CheckAvailabilityQueryHandler | null =
         null;
 
     private constructor() {}
@@ -486,6 +491,13 @@ export class DiContainer {
                 );
         }
         return this._getOutboundBookingsQueryHandler;
+    }
+    public get CheckAvailabilityQueryHandler(): CheckAvailabilityQueryHandler {
+        if (!this._checkAvailabilityQueryHandler) {
+            this._checkAvailabilityQueryHandler =
+                new CheckAvailabilityQueryHandler(this.wareHouseRepository);
+        }
+        return this._checkAvailabilityQueryHandler;
     }
 }
 

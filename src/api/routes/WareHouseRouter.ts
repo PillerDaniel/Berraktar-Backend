@@ -10,6 +10,7 @@ import authMiddleware from '../middlewares/AuthMiddleware.js';
 const wareHouseController: WareHouseController = new WareHouseController(
     container.GetAllWareHouseQueryHandler,
     container.GetWareHouseByIdQueryHandler,
+    container.CheckAvailabilityQueryHandler,
     container.GetShelfByIdQueryHandler
 );
 
@@ -25,6 +26,10 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 router.get('/shelf/:id', async (req: Request, res: Response) => {
     return wareHouseController.getShelfById(req, res);
+});
+
+router.post('/availability', async (req: Request, res: Response) => {
+    return wareHouseController.checkAvailability(req, res);
 });
 
 export default router;

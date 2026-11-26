@@ -11,11 +11,14 @@ import { GetWareHouseByIdQuery } from '../../application/queries/warehouse/GetWa
 import { GetWareHouseByIdQueryHandler } from '../../application/queries/warehouse/GetWareHouseByIdQueryHandler.js';
 import { GetShelfByIdQuery } from '../../application/queries/shelf/GetShelfByIdQuery.js';
 import { GetShelfByIdQueryHandler } from '../../application/queries/shelf/GetShelfByIdQueryHandler.js';
+import CheckAvailabilityQuery from '../../application/queries/booking/CheckAvailabilityQuery.js';
+import CheckAvailabilityQueryHandler from '../../application/queries/booking/CheckAvailabilityQueryHandler.js';
 
 export class WareHouseController {
     constructor(
         private readonly getAllWareHouseQueryHandler: GetAllWareHouseQueryHandler,
         private readonly getWareHouseByIdQueryHandler: GetWareHouseByIdQueryHandler,
+        private readonly checkAvailabilityQueryHandler: CheckAvailabilityQueryHandler,
         private readonly getShelfByIdQueryHandler: GetShelfByIdQueryHandler
     ) {}
 
@@ -104,6 +107,50 @@ export class WareHouseController {
             return res.status(500).json({
                 messageHu: 'Szerver hiba.',
                 messageEn: 'Server error.',
+            });
+        }
+    }
+
+    async checkAvailability(
+        req: Request,
+        res: Response
+    ): Promise<void | Response> {
+        try {
+            const { id, startDate, endDate, type, palletCount } = req.body;
+
+            if (!id || !startDate || !endDate || palletCount === undefined) {
+                throw new AppError(
+                    400,
+                    'Minden mező megadása kötelező!',
+                    'All fields are required!'
+                );
+            }
+
+            const query = new CheckAvailabilityQuery(
+                id,
+                new Date(startDate),
+                new Date(endDate),
+                type === 'refrigerated' ? 'refrigerated' : 'none',
+                Number(palletCount)
+            );
+
+            const isAvailable =
+                await this.checkAvailabilityQueryHandler.handle(query);
+
+            return res.status(200).json({
+                available: isAvailable,
+            });
+        } catch (error: any) {
+            const statusCode = error.statusCode || 400;
+            return res.status(statusCode).json({
+                messageHu:
+                    error.messageHu ||
+                    error.message ||
+                    'Hiba a foglalhatóság ellenőrzésekor!',
+                messageEn:
+                    error.messageEn ||
+                    error.message ||
+                    'Failed to check warehouse availability!',
             });
         }
     }
